@@ -113,6 +113,8 @@ class jugador():
     def validar_jugada(self, jugada):
         suma = 0
         valida = True
+        #linea para ver si funciona el respositorio de github
+        
         for i in range(len(jugada)):
             #determinar el valor del comodin
             if jugada[i].numero == "*":
