@@ -80,8 +80,6 @@ class jugador():
         while len(jugada)< 14:
             turno = int(input("Que desea hacer? 1.Hacer jugada 2.Comer 3. Terminar turno "))
             if turno == 1:
-                print(f"Tamanio de la jugada: {len(jugada)}")
-                print(f"Tamanio de la nueva jugada: {nueva_jugada}")
                 while len(jugada) < nueva_jugada or len(jugada) < (nueva_jugada+1):
                     while True:
                         try:
@@ -125,20 +123,11 @@ class jugador():
             else:
                 suma += jugada[i].numero
 
+        if suma < 25:
+            print("Jugada invalida, necesitas al menos 25 puntos")
+        else:
+            print(f"Se hizo una jugada de {suma} puntos")
 
-        print(suma)
-        # if suma < 25:
-        #     print("Jugada invalida, necesitas 25 puntos para poder jugar")
-        #     valida = False
-        # else:
-        #     print(f"Jugada de {suma} puntos")
-
-        # if not valida:
-        #     reg = jugada.pop()
-        #     self.mano.append(reg)
-        #     return False
-        # else:
-        #     return True
 
 
     def ganar(self):
