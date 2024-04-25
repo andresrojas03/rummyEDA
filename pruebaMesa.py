@@ -50,20 +50,23 @@ class jugador():
         #para mostrar las jugadas que tiene el jugador 
         #usar esta funcion en la clase mesa para mostrar las jugadas de todos los players
         print("Tu(s) jugadas:")
-        for ficha in fichas:
-            color = COLOR_RESET
-            if ficha.color == "amarillo":
-                color = COLOR_YELLOW
-            elif ficha.color == "azul":
-                color = COLOR_BLUE
-            elif ficha.color == "rojo":
-                color = COLOR_RED
-            elif ficha.color == "verde":
-                color = COLOR_GREEN
-            elif ficha.color == "comodin":
-                color = COLOR_WHITE
+        if len(fichas) == 0:
+            print("[]")
+        else:
+            for ficha in fichas:
+                color = COLOR_RESET
+                if ficha.color == "amarillo":
+                    color = COLOR_YELLOW
+                elif ficha.color == "azul":
+                    color = COLOR_BLUE
+                elif ficha.color == "rojo":
+                    color = COLOR_RED
+                elif ficha.color == "verde":
+                    color = COLOR_GREEN
+                elif ficha.color == "comodin":
+                    color = COLOR_WHITE
 
-            print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
+                print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
         print()
         
     def comer(self, ficha):
@@ -73,48 +76,71 @@ class jugador():
     
     def armar_jugada(self, pozo): 
         jugada = []
-        print("Tu mano:")
-        self.mostrar_mano(self.mano)
-        print()
-        nueva_jugada = 3
-        while len(jugada)< 14:
-            turno = int(input("Que desea hacer? 1.Hacer jugada 2.Comer 3. Terminar turno "))
-            if turno == 1:
-                while len(jugada) < nueva_jugada or len(jugada) < (nueva_jugada+1):
-                    while True:
-                        try:
-                            indice = int(input("Ingrese el índice de la ficha: ")) - 1  # Restar 1 para ajustar al índice base 0
-                            if 0 <= indice < len(self.mano):
+        ronda = 2
+        if ronda == 1:
+            print("Tu mano:")
+            self.mostrar_mano(self.mano)
+            print()
+        else:
+            self.mostrar_jugadas(jugada)
+            nueva_jugada = 3
+            while len(jugada) < 14:
+                self.mostrar_mano(self.mano)
+                print()
+                turno = int(input("Que desea hacer? 1.Hacer jugada 2.Comer 3. Terminar turno "))
+                if turno == 1:
+                    
+                    while len(jugada) < nueva_jugada or len(jugada) < (nueva_jugada+1):
+                        while True:
+                            try:
+                                indice = int(input("Ingrese el índice de la ficha: ")) - 1  # Restar 1 para ajustar al índice base 0
+                                if 0 <= indice < len(self.mano):
+                                    break
+                                else:
+                                    print("Índice fuera de rango. Inténtelo de nuevo.")
+                            except ValueError:
+                                print("Entrada no válida. Inténtelo de nuevo.")
+                        ficha_seleccionada = self.mano.pop(indice)
+                        jugada.append(ficha_seleccionada)
+                        self.mostrar_jugadas(jugada)
+                        self.mostrar_mano(self.mano)
+                        print()
+                        if(len(jugada) == 3):
+                            termino = int(input(("Agregar otra ficha? 1.Si 2.No")))
+                            if termino == 1:
+                                pass
+                            elif termino == 2:
+                                self.ordenar_jugada(jugada)
                                 break
-                            else:
-                                print("Índice fuera de rango. Inténtelo de nuevo.")
-                        except ValueError:
-                            print("Entrada no válida. Inténtelo de nuevo.")
-                    ficha_seleccionada = self.mano.pop(indice)
-                    jugada.append(ficha_seleccionada)
-                    self.mostrar_jugadas(jugada)
-                    self.mostrar_mano(self.mano)
-                    print()
-                    if(len(jugada) == 3):
-                        termino = int(input(("Agregar otra ficha? 1.Si 2.No")))
-                        if termino == 1:
-                            pass
-                        elif termino == 2:
-                            break
-                nueva_jugada = nueva_jugada + 3 
-                
-            elif turno == 2:
-                self.comer(pozo)
-                return
-            elif turno == 3:
-                self.validar_jugada(jugada)
-                return 
+                    nueva_jugada = nueva_jugada + 3 
+                    
+                    self.ordenar_jugada(jugada)
+                    if self.validar_jugada(jugada):
+                        break
+                    else:
+                        jugada.clear()
+                elif turno == 2:
+                    self.comer(pozo)
+                    return
+                elif turno == 3:
+                    return 
         
     def validar_jugada(self, jugada):
         suma = 0
-        valida = True
-        #linea para ver si funciona el respositorio de github
-        
+
+        for i, ficha in enumerate(jugada):
+            if i < len(jugada) - 1:  # Verifica que no estemos en el último elemento de la lista
+                siguiente = jugada[i+1]
+                if ficha.color != siguiente.color:
+                    if ficha.numero != siguiente.numero:
+                        print("Jugada inválida, no es una corrida")
+                        self.devolver_fichas(jugada)
+                        return False
+                else:
+                    if ficha.numero == siguiente.numero:
+                        print("Jugada inválida, no es una tercia/cuarta")
+                        self.devolver_fichas(jugada)
+                        return False
         for i in range(len(jugada)):
             #determinar el valor del comodin
             if jugada[i].numero == "*":
@@ -127,8 +153,27 @@ class jugador():
 
         if suma < 25:
             print("Jugada invalida, necesitas al menos 25 puntos")
+            self.devolver_fichas(jugada)
+            return False
+
         else:
             print(f"Se hizo una jugada de {suma} puntos")
+            return True
+   
+    def devolver_fichas(self, jugada):
+        while len(jugada) != 0:
+            reg = jugada.pop()
+            self.mano.append(reg)    
+    
+    def ordenar_jugada(self, jugada):
+        for i in range(len(jugada) - 1):
+            if jugada[i].numero == "*":
+                jugada[0] = jugada[i].numero
+            cambio = jugada[i+1].numero
+            if jugada[i].numero > jugada[i+1].numero:
+                jugada[i+1].numero = jugada[i].numero
+                jugada[i].numero = cambio
+
 
 
 
