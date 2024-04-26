@@ -7,7 +7,7 @@ COLOR_BLUE = '\033[94m'
 COLOR_WHITE = '\033[97m'
 COLOR_RESET = '\033[0m'
 fichas_jugador = 14
-nJugadores = 2
+nJugadores = 4
 
 
 class fichas():
@@ -22,7 +22,7 @@ class fichas():
         self.color = color
 
     
-class jugador():
+class player():
     def __init__(self, nombre):
         self.nombre = nombre
         self.mano = []
@@ -71,7 +71,7 @@ class jugador():
         
     def comer(self, ficha):
         print(f"Has agarrado la ficha {ficha[-1].numero} de color {ficha[-1].color}")
-        print(f"Quedan: {len(ficha)} fichas en el pozo")
+        print(f"Quedan: {len(ficha)-1} fichas en el pozo")
         self.mano.append(ficha.pop())
     
     def armar_jugada(self, pozo): 
@@ -174,31 +174,67 @@ class jugador():
                 jugada[i+1].numero = jugada[i].numero
                 jugada[i].numero = cambio
 
-
-
-
     def ganar(self):
         if len(self.mano) != 0:
             return False
         elif len(self.mano) == 0:
             print("El jugador ha ganado")
             return True     
-     
+
+
+class bot():
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.mano = []
+        self.jugadas = []
+    def llenarManoBot(self):
+        return self.mano
+    def mostrar_mano(self, fichas):
+        for ficha in fichas:
+            color = COLOR_RESET
+            if ficha.color == "amarillo":
+                color = COLOR_YELLOW
+            elif ficha.color == "azul":
+                color = COLOR_BLUE
+            elif ficha.color == "rojo":
+                color = COLOR_RED
+            elif ficha.color == "verde":
+                color = COLOR_GREEN
+            elif ficha.color == "comodin":
+                color = COLOR_WHITE
+            print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
+
+    def tirarBot(self):
+        tirar = self.mano.pop()
+        print(f"El bot {self.nombre} tiro la ficha {tirar.numero} de color {tirar.color}")
+        print(f"Mano del bot {self.nombre}")
+        self.mostrar_mano(self.mano)
+        
+
+    def ganar(self):
+        if len(self.mano) != 0:
+            return False
+        
+        elif len(self.mano) == 0:
+            return True
+
+
 class mesa():
     def __init__(self, jugadores):
         self.jugadores = jugadores#un arreglo con los jugadores en la mesa
-        # self.jugadas = jugadas #arreglo con las jugadas de cada jugador
+        self.turno_actual = 0
+
     def mostrar_jugadores(self):
         print("Jugadores activos en la mesa:")
         for jugador in self.jugadores:
             print(f"{jugador.nombre} ", end='')
         print()
 
-    def turnos(self, orden):
-        print(f"inicia el jugador {self.jugadores[orden-1].nombre}")
-        if orden == 1: #inicia el jugador de consola
-            return True
-            
+    def turnos(self, inicio):
+        inicio = (inicio - 1) % len(self.jugadores)
+        print(f"Inicia el jugador{self.jugadores[inicio].nombre}")
+        self.turno_actual = inicio
+        return self.jugadores[inicio]            
     
 def crear_fichas():
     print("Creando las fichas...")
@@ -222,10 +258,21 @@ def crear_fichas():
                     ficha = fichas(i + 1, color)
                     arreglo.append(ficha)
 
-def crear_jugadores(num_jugadores):
-    nombre_jugador = [f"Jugador{i+1}" for i in range(num_jugadores)]
-    jugadores = [jugador(nombre) for nombre in nombre_jugador]
+def crear_jugadores(mesa, Bot, Jugador, incluir_bot=False):
+    if incluir_bot:  # Si se incluye un jugador humano
+        num_jugadores = 3  # Hay tres bots
+        nombre_jugadores = [f"Bot{i+1}" for i in range(num_jugadores)]
+        jugadores = [Bot(nombre) for nombre in nombre_jugadores]
+        nombre_jugador = input("Ingrese su nombre: ")
+        jugador = Jugador(nombre_jugador)
+        jugadores.append(jugador)
+    else:  # Si son todos bots
+        num_jugadores = 4
+        nombre_jugadores = [f"Bot{i+1}" for i in range(num_jugadores)]
+        jugadores = [Bot(nombre) for nombre in nombre_jugadores]
+
     return jugadores
+
 
 def mezclar_fichas(n,jugadores):
     pozo = sum([fichas.amarillo, fichas.azul, fichas.rojo, fichas.verde, fichas.comodin], []) #este es el pozo de las fichas
@@ -233,10 +280,13 @@ def mezclar_fichas(n,jugadores):
     
     #para llenar el arreglo del jugador con sus fichas
     for j in range(n):
-        mano_jugador = jugadores[j].llenar_mano() #llamando el arreglo del jugador
+        if isinstance(jugadores[j], player):
+            mano_jugador = jugadores[j].llenar_mano()
+        else:
+            mano_jugador = jugadores[j].llenarManoBot()
         for i in range(fichas_jugador):
             ficha = pozo.pop()
-            mano_jugador.append(ficha) #llenando la mano del jugador
+            mano_jugador.append(ficha)
 
 
     return pozo
@@ -244,7 +294,7 @@ def mezclar_fichas(n,jugadores):
 def main():
     crear_fichas()
     
-    jugadores = crear_jugadores(nJugadores)
+    jugadores = crear_jugadores(mesa, bot, player, nJugadores)
     
     # Llenar el deck con la función mezclar_fichas()
     pozo = mezclar_fichas(nJugadores, jugadores)
@@ -252,19 +302,26 @@ def main():
     orden = random.randint(1, nJugadores)
 
     table= mesa(jugadores)
-    inicio = table.turnos(orden)
-    
+    print(orden)
+    table.mostrar_jugadores()
+    table.turnos(orden)
 
     print(f"En el pozo hay: {len(pozo)} fichas")
     #mostrar el contenido hasta que el jugador gane
-    while not jugadores[0].ganar():
-        table.mostrar_jugadores()
-        
-        #pruebas con el jugador 1
-        play = jugadores[0].armar_jugada(pozo)
-        print(f"Ha terminado el turno del {jugadores[0].nombre}")
-        exit(-1)
-        
+    while len(jugadores) > 1:
+        for jugador in jugadores:
+            if isinstance(jugador, player):
+                jugador.armar_jugada(pozo)
+            else:
+                print(f"Tira el bot {jugador.nombre}\n")
+                jugador.tirarBot()
+            if jugador.ganar():
+                if isinstance(jugador, player):
+                    print(f"Ha salido el jugador {jugador.nombre}")
+                else:
+                    print(f"Ha salido el bot {jugador.nombre}")
+                jugadores.remove(jugador)          
+
     
     
 
