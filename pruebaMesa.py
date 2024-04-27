@@ -1,4 +1,6 @@
 import random
+import time
+import os
 
 COLOR_RED = '\033[91m'
 COLOR_GREEN = '\033[92m'
@@ -48,7 +50,6 @@ class player():
 
     def mostrar_jugadas(self, fichas):
         #para mostrar las jugadas que tiene el jugador 
-        #usar esta funcion en la clase mesa para mostrar las jugadas de todos los players
         print("Tu(s) jugadas:")
         if len(fichas) == 0:
             print("[]")
@@ -67,70 +68,111 @@ class player():
                     color = COLOR_WHITE
 
                 print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
-        print()
+            print()
         
     def comer(self, ficha):
+        if len(ficha) == 0:
+            print("No quedan mas fichas en el pozo")
+            return
+        
         print(f"Has agarrado la ficha {ficha[-1].numero} de color {ficha[-1].color}")
         print(f"Quedan: {len(ficha)-1} fichas en el pozo")
         self.mano.append(ficha.pop())
+        time.sleep(1)
     
-    def armar_jugada(self, pozo): 
+    def armar_jugada(self, pozo, ronda, jugadores): 
         jugada = []
-        ronda = 2
         if ronda == 1:
             print("Tu mano:")
+            nueva_jugada = 3
+        else:
+            self.mostrar_jugadas(self.jugadas)
+            nueva_jugada = 3
+        while len(jugada) < 14:
             self.mostrar_mano(self.mano)
             print()
-        else:
-            self.mostrar_jugadas(jugada)
-            nueva_jugada = 3
-            while len(jugada) < 14:
-                self.mostrar_mano(self.mano)
-                print()
-                turno = int(input("Que desea hacer? 1.Hacer jugada 2.Comer 3. Terminar turno "))
-                if turno == 1:
-                    
-                    while len(jugada) < nueva_jugada or len(jugada) < (nueva_jugada+1):
-                        while True:
-                            try:
-                                indice = int(input("Ingrese el índice de la ficha: ")) - 1  # Restar 1 para ajustar al índice base 0
-                                if 0 <= indice < len(self.mano):
-                                    break
-                                else:
-                                    print("Índice fuera de rango. Inténtelo de nuevo.")
-                            except ValueError:
-                                print("Entrada no válida. Inténtelo de nuevo.")
-                        ficha_seleccionada = self.mano.pop(indice)
-                        jugada.append(ficha_seleccionada)
-                        self.mostrar_jugadas(jugada)
-                        self.mostrar_mano(self.mano)
-                        print()
-                        if(len(jugada) == 3):
-                            termino = int(input(("Agregar otra ficha? 1.Si 2.No")))
-                            if termino == 1:
-                                pass
-                            elif termino == 2:
-                                self.ordenar_jugada(jugada)
+            turno = int(input("Que desea hacer? 1.Hacer jugada 2.Comer 3.Jugar en la mesa 4. Terminar turno "))
+            if turno == 1:    
+                while len(jugada) < nueva_jugada or len(jugada) < (nueva_jugada+1):
+                    while True:
+                        try:
+                            indice = int(input("Ingrese el índice de la ficha: ")) - 1  # Restar 1 para ajustar al índice base 0
+                            if 0 <= indice < len(self.mano):
                                 break
-                    nueva_jugada = nueva_jugada + 3 
-                    
-                    self.ordenar_jugada(jugada)
-                    if self.validar_jugada(jugada):
-                        break
-                    else:
-                        jugada.clear()
-                elif turno == 2:
-                    self.comer(pozo)
-                    return
-                elif turno == 3:
-                    return 
-        
+                            else:
+                                print("Índice fuera de rango. Inténtelo de nuevo.")
+                        except ValueError:
+                            print("Entrada no válida. Inténtelo de nuevo.")
+                    ficha_seleccionada = self.mano.pop(indice)
+                    jugada.append(ficha_seleccionada)
+                    self.mostrar_jugadas(jugada)
+                    self.mostrar_mano(self.mano)
+                    print()
+                    if(len(jugada) == 3):
+                        termino = int(input(("Agregar otra ficha? 1.Si 2.No")))
+                        if termino == 1:
+                            pass
+                        elif termino == 2:
+                            self.ordenar_jugada(jugada)
+                            break
+                nueva_jugada = nueva_jugada + 3 
+                
+                self.ordenar_jugada(jugada)
+                if self.validar_jugada(jugada):
+                    break
+                else:
+                    jugada.clear()
+            elif turno == 2:
+                self.comer(pozo)
+                return
+            elif turno == 3:
+                ficha_jugada = int(input("Ingrese el indice de la ficha que quiera agrear a otra jugada: "))
+                ficha_seleccionada = self.mano.pop(ficha_jugada-1)
+                self.agregar_ficha(ficha_seleccionada, jugadores)
+                return
+            elif turno == 4:
+                return
+            
+    def agregar_ficha(self, ficha_seleccionada, jugadores):
+        for i, jugador in enumerate(jugadores):
+            if isinstance(jugador, player):
+                pass
+            else:
+                print(f"{i + 1} Jugador {jugador.nombre}")
+        sel = int(input("Ingrese el índice del jugador al que quiere agregar una ficha: "))
+        if sel >= 1 and sel <= len(jugadores): 
+            jugadores[sel - 1].jugadas.append(ficha_seleccionada)
+        else:
+            print("Índice inválido. Inténtelo de nuevo.")
+
     def validar_jugada(self, jugada):
         suma = 0
+        comodin_presente = False  # Variable para rastrear si hay comodines en la jugada
+        conteo_comodin = 0
+        # Calcular la suma de los números de las fichas, excluyendo los comodines
+        for ficha in jugada:
+            if ficha.numero == "*":
+                comodin_presente = True
+                conteo_comodin += 1
+                continue
+            suma += ficha.numero
 
+        # Verificar si la suma total es menor a 25
+        if suma < 25:
+            if comodin_presente and suma >= 12 or conteo_comodin == 2 and suma < 12:
+                pass
+            else:
+                print("Jugada inválida, la suma total de las fichas es menor a 25")
+                self.devolver_fichas(jugada)
+                return False
+
+        # Verificar si la jugada es una corrida o una tercia/cuarta
         for i, ficha in enumerate(jugada):
-            if i < len(jugada) - 1:  # Verifica que no estemos en el último elemento de la lista
+            if i < len(jugada) - 1:
                 siguiente = jugada[i+1]
+                if ficha.numero == '*' or siguiente.numero == '*':
+                    self.jugadas.append(ficha)
+                    continue
                 if ficha.color != siguiente.color:
                     if ficha.numero != siguiente.numero:
                         print("Jugada inválida, no es una corrida")
@@ -141,38 +183,23 @@ class player():
                         print("Jugada inválida, no es una tercia/cuarta")
                         self.devolver_fichas(jugada)
                         return False
-        for i in range(len(jugada)):
-            #determinar el valor del comodin
-            if jugada[i].numero == "*":
-                if jugada[i+1].numero == 13:
-                    suma += (jugada[i+1].numero)
-                else:
-                    suma += (jugada[i+1].numero + 1)
-            else:
-                suma += jugada[i].numero
-
-        if suma < 25:
-            print("Jugada invalida, necesitas al menos 25 puntos")
-            self.devolver_fichas(jugada)
-            return False
-
-        else:
-            print(f"Se hizo una jugada de {suma} puntos")
-            return True
+            self.jugadas.append(ficha)
+        return True
    
     def devolver_fichas(self, jugada):
         while len(jugada) != 0:
             reg = jugada.pop()
             self.mano.append(reg)    
-    
+        
     def ordenar_jugada(self, jugada):
         for i in range(len(jugada) - 1):
             if jugada[i].numero == "*":
-                jugada[0] = jugada[i].numero
-            cambio = jugada[i+1].numero
-            if jugada[i].numero > jugada[i+1].numero:
-                jugada[i+1].numero = jugada[i].numero
-                jugada[i].numero = cambio
+                jugada[0] = jugada[i]
+            elif jugada[i+1].numero == "*":
+                jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
+            elif jugada[i].numero > jugada[i+1].numero:
+                jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
+
 
     def ganar(self):
         if len(self.mano) != 0:
@@ -189,6 +216,7 @@ class bot():
         self.jugadas = []
     def llenarManoBot(self):
         return self.mano
+    
     def mostrar_mano(self, fichas):
         for ficha in fichas:
             color = COLOR_RESET
@@ -203,13 +231,35 @@ class bot():
             elif ficha.color == "comodin":
                 color = COLOR_WHITE
             print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
+        print()
 
     def tirarBot(self):
+        time.sleep(1)
         tirar = self.mano.pop()
-        print(f"El bot {self.nombre} tiro la ficha {tirar.numero} de color {tirar.color}")
-        print(f"Mano del bot {self.nombre}")
-        self.mostrar_mano(self.mano)
-        
+        self.jugadas.append(tirar)
+        print(f"****$$$$ {self.nombre} tiro la ficha {tirar.numero} de color {tirar.color} $$$$****")
+    
+    def mostrar_jugadas(self):
+        ficha = self.jugadas
+        print(f"\nJugadas de {self.nombre}")
+        if len(ficha) == 0:
+            print("[]")
+        else:
+            for ficha in self.jugadas:
+                color = COLOR_RESET
+                if ficha.color == "amarillo":
+                    color = COLOR_YELLOW
+                elif ficha.color == "azul":
+                    color = COLOR_BLUE
+                elif ficha.color == "rojo":
+                    color = COLOR_RED
+                elif ficha.color == "verde":
+                    color = COLOR_GREEN
+                elif ficha.color == "comodin":
+                    color = COLOR_WHITE
+
+                print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
+            print()    
 
     def ganar(self):
         if len(self.mano) != 0:
@@ -217,7 +267,6 @@ class bot():
         
         elif len(self.mano) == 0:
             return True
-
 
 class mesa():
     def __init__(self, jugadores):
@@ -227,14 +276,31 @@ class mesa():
     def mostrar_jugadores(self):
         print("Jugadores activos en la mesa:")
         for jugador in self.jugadores:
-            print(f"{jugador.nombre} ", end='')
-        print()
+            print(f"**** {jugador.nombre} ", end='')
+        print("****")
 
-    def turnos(self, inicio):
-        inicio = (inicio - 1) % len(self.jugadores)
-        print(f"Inicia el jugador{self.jugadores[inicio].nombre}")
-        self.turno_actual = inicio
-        return self.jugadores[inicio]            
+    def mostrar_jugadas(self):
+        #para mostrar las jugadas que tiene el jugador 
+        for jugador in self.jugadores:
+           if isinstance(jugador, player):
+               pass
+           else:
+               jugador.mostrar_jugadas()
+    def mostrar_manos(self):
+        for jugador in self.jugadores:
+            if isinstance(jugador, player):
+                pass
+            else:
+                print(f"Mano de {jugador.nombre}")
+                jugador.mostrar_mano(jugador.mano)
+                print()
+
+    def turnos(self, orden):
+        # Reordenar los jugadores para que el primero sea el que tenga el índice 'orden'
+        self.jugadores = self.jugadores[orden-1:] + self.jugadores[:orden-1]
+        self.turno_actual = 0  # Reseteamos el turno actual al principio del arreglo
+        print(f"Inicia el jugador {self.jugadores[self.turno_actual].nombre}")
+        return self.jugadores[self.turno_actual]
     
 def crear_fichas():
     print("Creando las fichas...")
@@ -273,7 +339,6 @@ def crear_jugadores(mesa, Bot, Jugador, incluir_bot=False):
 
     return jugadores
 
-
 def mezclar_fichas(n,jugadores):
     pozo = sum([fichas.amarillo, fichas.azul, fichas.rojo, fichas.verde, fichas.comodin], []) #este es el pozo de las fichas
     random.shuffle(pozo)
@@ -287,43 +352,43 @@ def mezclar_fichas(n,jugadores):
         for i in range(fichas_jugador):
             ficha = pozo.pop()
             mano_jugador.append(ficha)
-
-
     return pozo
        
 def main():
     crear_fichas()
-    
     jugadores = crear_jugadores(mesa, bot, player, nJugadores)
-    
     # Llenar el deck con la función mezclar_fichas()
     pozo = mezclar_fichas(nJugadores, jugadores)
     
     orden = random.randint(1, nJugadores)
-
     table= mesa(jugadores)
     print(orden)
-    table.mostrar_jugadores()
-    table.turnos(orden)
-
-    print(f"En el pozo hay: {len(pozo)} fichas")
+    rondas = 0
     #mostrar el contenido hasta que el jugador gane
     while len(jugadores) > 1:
-        for jugador in jugadores:
+        rondas += 1
+        time.sleep(1)
+        os.system('cls' if os.name == 'nt' else 'clear')  # Limpiar la pantalla
+        print(f"****#### RONDA {rondas} ####****")
+        table.mostrar_jugadores()
+        if rondas == 1:
+            table.turnos(orden)
+        table.mostrar_manos()
+        for jugador in table.jugadores:
+            time.sleep(0.7)
             if isinstance(jugador, player):
-                jugador.armar_jugada(pozo)
+                print("\nTu turno")
+                table.mostrar_jugadas()
+                jugador.armar_jugada(pozo, rondas,table.jugadores)
             else:
-                print(f"Tira el bot {jugador.nombre}\n")
                 jugador.tirarBot()
+             
             if jugador.ganar():
                 if isinstance(jugador, player):
                     print(f"Ha salido el jugador {jugador.nombre}")
                 else:
                     print(f"Ha salido el bot {jugador.nombre}")
-                jugadores.remove(jugador)          
-
-    
-    
+                jugadores.remove(jugador)
 
 
 if __name__ == "__main__": 
