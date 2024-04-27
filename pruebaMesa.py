@@ -23,7 +23,6 @@ class fichas():
         self.numero = numero
         self.color = color
 
-    
 class player():
     def __init__(self, nombre):
         self.nombre = nombre
@@ -33,6 +32,19 @@ class player():
     def llenar_mano(self):
         return self.mano
     
+    def ordenar_mano(self):
+        comodines = [ficha for ficha in self.mano if ficha.numero == "*"]
+        numeros = [ficha for ficha in self.mano if ficha.numero != "*"]
+        
+        # Ordenar las fichas numéricas en función de su número
+        for i in range(len(numeros)):
+            for j in range(len(numeros) - 1):
+                if numeros[j].numero > numeros[j + 1].numero:
+                    numeros[j], numeros[j + 1] = numeros[j + 1], numeros[j]
+        
+        # Combinar los comodines y las fichas numéricas ordenadas
+        self.mano = comodines + numeros
+
     def mostrar_mano(self, fichas):
         for ficha in fichas:
             color = COLOR_RESET
@@ -81,6 +93,7 @@ class player():
         time.sleep(1)
     
     def armar_jugada(self, pozo, ronda, jugadores): 
+        self.ordenar_mano()
         jugada = []
         if ronda == 1:
             print("Tu mano:")
@@ -208,12 +221,15 @@ class player():
             print("El jugador ha ganado")
             return True     
 
-
 class bot():
     def __init__(self, nombre):
         self.nombre = nombre
         self.mano = []
+        self.jugada_numero = []
+        self.jugada_escalera = []
+        self.comodin = []
         self.jugadas = []
+
     def llenarManoBot(self):
         return self.mano
     
@@ -233,16 +249,132 @@ class bot():
             print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
         print()
 
-    def tirarBot(self):
-        time.sleep(1)
-        tirar = self.mano.pop()
-        self.jugadas.append(tirar)
-        print(f"****$$$$ {self.nombre} tiro la ficha {tirar.numero} de color {tirar.color} $$$$****")
+    def ordenar_mano(self):
+        comodines = [ficha for ficha in self.mano if ficha.numero == "*"]
+        numeros = [ficha for ficha in self.mano if ficha.numero != "*"]
+        
+        # Ordenar las fichas numéricas en función de su número
+        for i in range(len(numeros)):
+            for j in range(len(numeros) - 1):
+                if numeros[j].numero > numeros[j + 1].numero:
+                    numeros[j], numeros[j + 1] = numeros[j + 1], numeros[j]
+        
+        # Combinar los comodines y las fichas numéricas ordenadas
+        self.mano = comodines + numeros
+
+    def jugada_tercia(self):
+        numeros = []
+        comodines = []
+        jugada = []
+        suma = 0
+        
+        # Iterar sobre la lista de fichas y separar los comodines
+        for ficha in self.mano:
+            if ficha.numero == "*":
+                comodines.append(ficha)
+            else:
+                numeros.append(ficha)
+        
+        # Iterar sobre los números para buscar tercias
+        for i in range(len(numeros) - 2):  # -2 para evitar el índice fuera de rango
+            if len(jugada) < 4:
+                if numeros[i].numero == numeros[i+1].numero == numeros[i+2].numero and \
+                numeros[i].color != numeros[i+1].color and \
+                numeros[i].color != numeros[i+2].color and \
+                numeros[i+1].color != numeros[i+2].color:
+                    jugada.extend(numeros[i:i+3])  # Agregar la tercia a la jugada
+        
+        # Calcular la suma de los números en la jugada
+        for ficha in jugada:
+            suma += ficha.numero
+        # Verificar condiciones para agregar las fichas a self.jugadas
+        if suma > 25:
+            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            return True
+        elif len(comodines) == 1 and suma > 12:
+            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+            self.jugadas.append(comodines[0])  # Agregar el comodín restante
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            for ficha in comodines:
+                self.mano.remove(ficha)
+            return True
+        elif len(comodines) == 2 and suma > 9:
+            self.jugadas.extend(comodines)  # Agregar ambos comodines
+            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            for ficha in comodines:
+                self.mano.remove(ficha)
+            return True
+        
+        return False  # No se pudo formar una tercia válida
+
+    def jugada_escalera(self):
+        numeros = []
+        comodines = []
+        jugada = []
+        suma = 0
+        
+        # Iterar sobre la lista de fichas y separar los comodines
+        for ficha in self.mano:
+            if ficha.numero == "*":
+                comodines.append(ficha)
+            else:
+                numeros.append(ficha)
+        # Iterar sobre los números para buscar escaleras
+        for i in range(len(numeros) - 2):  # -2 para evitar el índice fuera de rango
+            if len(jugada) < 14:
+                if (numeros[i].numero + 1 == numeros[i+1].numero) and (numeros[i+1].numero + 1 == numeros[i+2].numero) \
+                    and (numeros[i].color == numeros[i+1].color == numeros[i+2].color):
+                    jugada.extend(numeros[i:i+3])  # Agregar la escalera a la jugada
+
+        
+        # Calcular la suma de los números en la jugada
+        for ficha in jugada:
+            suma += ficha.numero
+
+        # Verificar condiciones para agregar las fichas a self.jugadas
+        if suma > 25:
+            self.jugadas.extend(jugada)     # Agregar las fichas de la escalera
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            return True
+        elif len(comodines) == 1 and suma > 12:
+            self.jugadas.extend(jugada) 
+            self.jugadas.append(comodines[0])  # Agregar el comodín restante
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            for ficha in comodines:
+                self.mano.remove(ficha)
+            return True
+        elif len(comodines) == 2 and suma > 9:
+            self.jugadas.extend(comodines)  # Agregar ambos comodines
+            self.jugadas.extend(jugada)     
+            for ficha in jugada:
+                self.mano.remove(ficha)
+            for ficha in comodines:
+                self.mano.remove(ficha)
+            return True
+        
+        return False  # No se pudo formar una escalera válida
     
+    def comer(self, pozo):
+        if len(pozo) == 0:
+            print("No quedan mas fichas en el pozo")
+            return
+        print(f"El jugador {self.nombre} ha comido\n")
+        print(f"Quedan: {len(pozo)-1} fichas en el pozo")
+        self.mano.append(pozo.pop())
+        time.sleep(1)
+
+
     def mostrar_jugadas(self):
-        ficha = self.jugadas
+
         print(f"\nJugadas de {self.nombre}")
-        if len(ficha) == 0:
+        if len(self.jugadas) == 0:
             print("[]")
         else:
             for ficha in self.jugadas:
@@ -264,14 +396,27 @@ class bot():
     def ganar(self):
         if len(self.mano) != 0:
             return False
-        
-        elif len(self.mano) == 0:
+        else:
             return True
 
 class mesa():
     def __init__(self, jugadores):
         self.jugadores = jugadores#un arreglo con los jugadores en la mesa
         self.turno_actual = 0
+
+    def ordenar_jugadas(self):
+        for jugador in self.jugadores:
+            comodines = [ficha for ficha in jugador.jugadas if ficha.numero == "*"]
+            numeros = [ficha for ficha in jugador.jugadas if ficha.numero != "*"]
+            
+            # Ordenar las fichas numéricas en función de su número
+            for i in range(len(numeros)):
+                for j in range(len(numeros) - 1):
+                    if numeros[j].numero > numeros[j + 1].numero:
+                        numeros[j], numeros[j + 1] = numeros[j + 1], numeros[j]
+            
+            # Combinar los comodines y las fichas numéricas ordenadas
+            jugador.jugadas = comodines + numeros
 
     def mostrar_jugadores(self):
         print("Jugadores activos en la mesa:")
@@ -324,7 +469,7 @@ def crear_fichas():
                     ficha = fichas(i + 1, color)
                     arreglo.append(ficha)
 
-def crear_jugadores(mesa, Bot, Jugador, incluir_bot=False):
+def crear_jugadores(Bot, Jugador, incluir_bot=False):
     if incluir_bot:  # Si se incluye un jugador humano
         num_jugadores = 3  # Hay tres bots
         nombre_jugadores = [f"Bot{i+1}" for i in range(num_jugadores)]
@@ -356,7 +501,7 @@ def mezclar_fichas(n,jugadores):
        
 def main():
     crear_fichas()
-    jugadores = crear_jugadores(mesa, bot, player, nJugadores)
+    jugadores = crear_jugadores(bot, player, nJugadores)
     # Llenar el deck con la función mezclar_fichas()
     pozo = mezclar_fichas(nJugadores, jugadores)
     
@@ -381,7 +526,10 @@ def main():
                 table.mostrar_jugadas()
                 jugador.armar_jugada(pozo, rondas,table.jugadores)
             else:
-                jugador.tirarBot()
+                jugador.ordenar_mano()
+                if not jugador.jugada_tercia():
+                    if not jugador.jugada_escalera():
+                        jugador.comer(pozo)
              
             if jugador.ganar():
                 if isinstance(jugador, player):
