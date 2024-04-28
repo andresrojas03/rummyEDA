@@ -226,7 +226,7 @@ class bot():
         self.nombre = nombre
         self.mano = []
         self.jugada_numero = []
-        self.jugada_escalera = []
+        self.jugada_escaleras = [] #salia error :c
         self.comodin = []
         self.jugadas = []
 
