@@ -225,9 +225,6 @@ class bot():
     def __init__(self, nombre):
         self.nombre = nombre
         self.mano = []
-        self.jugada_numero = []
-        self.jugada_escalera = []
-        self.comodin = []
         self.jugadas = []
 
     def llenarManoBot(self):
@@ -262,6 +259,17 @@ class bot():
         # Combinar los comodines y las fichas numéricas ordenadas
         self.mano = comodines + numeros
 
+    def armar_jugada(self, pozo):
+        # Intentar hacer una jugada de escalera
+        if not self.jugada_escalera():
+            pass
+        
+        # Intentar hacer una jugada de tercia
+        if not self.jugada_tercia():
+            pass
+
+        self.comer(pozo)
+
     def jugada_tercia(self):
         numeros = []
         comodines = []
@@ -283,33 +291,36 @@ class bot():
                 numeros[i].color != numeros[i+2].color and \
                 numeros[i+1].color != numeros[i+2].color:
                     jugada.extend(numeros[i:i+3])  # Agregar la tercia a la jugada
-        
-        # Calcular la suma de los números en la jugada
-        for ficha in jugada:
-            suma += ficha.numero
-        # Verificar condiciones para agregar las fichas a self.jugadas
-        if suma > 25:
-            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+        if len(jugada) > 0:
+            # Calcular la suma de los números en la jugada
             for ficha in jugada:
-                self.mano.remove(ficha)
-            return True
-        elif len(comodines) == 1 and suma > 12:
-            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
-            self.jugadas.append(comodines[0])  # Agregar el comodín restante
-            for ficha in jugada:
-                self.mano.remove(ficha)
-            for ficha in comodines:
-                self.mano.remove(ficha)
-            return True
-        elif len(comodines) == 2 and suma > 9:
-            self.jugadas.extend(comodines)  # Agregar ambos comodines
-            self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
-            for ficha in jugada:
-                self.mano.remove(ficha)
-            for ficha in comodines:
-                self.mano.remove(ficha)
-            return True
-        
+                suma += ficha.numero
+            # Verificar condiciones para agregar las fichas a self.jugadas
+            if suma > 25:
+                self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+                for ficha in jugada:
+                    if ficha in self.mano:
+                        self.mano.remove(ficha)
+                    else:
+                        pass
+                return True
+            elif len(comodines) >= 1 and suma > 12:
+                self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+                self.jugadas.append(comodines[0])  # Agregar el comodín restante
+                for ficha in jugada:
+                    self.mano.remove(ficha)
+                for ficha in comodines:
+                    self.mano.remove(ficha)
+                return True
+            elif len(comodines) == 2 and suma > 9:
+                self.jugadas.extend(comodines)  # Agregar ambos comodines
+                self.jugadas.extend(jugada)     # Agregar las fichas de la tercia
+                for ficha in jugada:
+                    self.mano.remove(ficha)
+                for ficha in comodines:
+                    self.mano.remove(ficha)
+                return True
+            
         return False  # No se pudo formar una tercia válida
 
     def jugada_escalera(self):
@@ -324,42 +335,26 @@ class bot():
                 comodines.append(ficha)
             else:
                 numeros.append(ficha)
+        
         # Iterar sobre los números para buscar escaleras
-        for i in range(len(numeros) - 2):  # -2 para evitar el índice fuera de rango
+        for i in range(len(numeros) - 2):
             if len(jugada) < 14:
-                if (numeros[i].numero + 1 == numeros[i+1].numero) and (numeros[i+1].numero + 1 == numeros[i+2].numero) \
-                    and (numeros[i].color == numeros[i+1].color == numeros[i+2].color):
-                    jugada.extend(numeros[i:i+3])  # Agregar la escalera a la jugada
-
+                jugada.append(numeros[i])
+                suma = sum(f.numero for f in jugada)
+                if suma >= 25:
+                    self.jugadas.extend(jugada)  
+                    for ficha in jugada:
+                        self.mano.remove(ficha) 
+                    return True
+                # Verificar si se puede agregar la siguiente ficha a la escalera
+                if numeros[i+1].numero - jugada[-1].numero == 1 and numeros[i+1].color == jugada[-1].color:
+                    jugada.append(numeros[i+1])
+                else:
+                    break  
+            else:
+                break  
         
-        # Calcular la suma de los números en la jugada
-        for ficha in jugada:
-            suma += ficha.numero
-
-        # Verificar condiciones para agregar las fichas a self.jugadas
-        if suma > 25:
-            self.jugadas.extend(jugada)     # Agregar las fichas de la escalera
-            for ficha in jugada:
-                self.mano.remove(ficha)
-            return True
-        elif len(comodines) == 1 and suma > 12:
-            self.jugadas.extend(jugada) 
-            self.jugadas.append(comodines[0])  # Agregar el comodín restante
-            for ficha in jugada:
-                self.mano.remove(ficha)
-            for ficha in comodines:
-                self.mano.remove(ficha)
-            return True
-        elif len(comodines) == 2 and suma > 9:
-            self.jugadas.extend(comodines)  # Agregar ambos comodines
-            self.jugadas.extend(jugada)     
-            for ficha in jugada:
-                self.mano.remove(ficha)
-            for ficha in comodines:
-                self.mano.remove(ficha)
-            return True
-        
-        return False  # No se pudo formar una escalera válida
+        return False  
     
     def comer(self, pozo):
         if len(pozo) == 0:
@@ -367,7 +362,8 @@ class bot():
             return
         print(f"El jugador {self.nombre} ha comido\n")
         print(f"Quedan: {len(pozo)-1} fichas en el pozo")
-        self.mano.append(pozo.pop())
+        ficha_comida = pozo.pop()
+        self.mano.append(ficha_comida)
         time.sleep(1)
 
 
@@ -436,7 +432,7 @@ class mesa():
             if isinstance(jugador, player):
                 pass
             else:
-                print(f"Mano de {jugador.nombre}")
+                print(f"Mano de {jugador.nombre} tiene {len(jugador.mano)} fichas")
                 jugador.mostrar_mano(jugador.mano)
                 print()
 
@@ -527,10 +523,8 @@ def main():
                 jugador.armar_jugada(pozo, rondas,table.jugadores)
             else:
                 jugador.ordenar_mano()
-                if not jugador.jugada_tercia():
-                    if not jugador.jugada_escalera():
-                        jugador.comer(pozo)
-             
+                jugador.armar_jugada(pozo)   
+
             if jugador.ganar():
                 if isinstance(jugador, player):
                     print(f"Ha salido el jugador {jugador.nombre}")
