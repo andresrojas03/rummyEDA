@@ -225,6 +225,12 @@ class bot():
     def __init__(self, nombre):
         self.nombre = nombre
         self.mano = []
+<<<<<<< HEAD
+=======
+        self.jugada_numero = []
+        self.jugada_escaleras = [] #salia error :c
+        self.comodin = []
+>>>>>>> 3b53d1abcdb7f791963c4448c947484e28daa70a
         self.jugadas = []
 
     def llenarManoBot(self):
