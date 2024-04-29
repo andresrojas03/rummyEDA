@@ -102,21 +102,25 @@ class player():
             sel = int(input("Que deseas hacer? 1.Armar jugada 2.Comer 3.Agregar a jugada "))
             if sel == 1:
                 while len(self.jugadas) < 14:
-                    self.mostrar_mano()
-                    cond = int(input("Agregar ficha? 1.Si 2.No "))
+                    self.mostrar_mano(self.mano)
+                    cond = int(input("Agregar ficha? 1.Si 2.No  "))
                     if cond == 1:
-                        ficha = int(input("Seleccione el indice de su ficha: "))-1
-                        self.jugadas.append(ficha)
-                    elif cond == 2:
+                        indice = int(input("Seleccione el indice de su ficha: "))-1
+                        ficha= self.mano.pop(indice)
+                        jugada.append(ficha)
+                    elif cond == 2: 
                         break
                     else:
                         break
-
-                if self.validar_jugada(self.jugadas):
+                print(f"size de tus jugadas{len(jugada)}")
+                if self.validar_jugada(jugada):
+                    while jugada:
+                        agregar = jugada.pop()
+                        self.jugadas.append(agregar)
                     break
                 else:
-                    while self.jugadas:
-                        reg = self.jugadas.pop()
+                    while jugada:
+                        reg = jugada.pop()
                         self.mano.append(reg)
                         continue
             if sel == 2:
@@ -124,15 +128,22 @@ class player():
                 break
             if sel == 3:
                 ind = int(input("Seleccione el indice de la ficha que quiere agregar: "))-1
-                ficha_seleccionada = self.mano.remove(ind)
-                self.agregar_ficha(ficha_seleccionada, jugadores)
+                ficha_seleccionada = self.mano.pop(ind)
+                if self.agregar_ficha(ficha_seleccionada, jugadores):
+                    break
+                else:
+                    continue
             
     def agregar_ficha(self, ficha_seleccionada, jugadores):
+        suma_jugada = 0
+        for _, jugador in enumerate(jugadores):
+            for ficha in jugador.jugadas:
+                suma_jugada += ficha.numero
+        if suma_jugada == 0:
+            print("No se puede agregar una ficha a jugadas vacias")
+            return 
         for i, jugador in enumerate(jugadores):
-            if isinstance(jugador, player):
-                pass
-            else:
-                print(f"{i + 1} Jugador {jugador.nombre}")
+            print(f"{i + 1} Jugador {jugador.nombre}")
         sel = int(input("Ingrese el índice del jugador al que quiere agregar una ficha: "))
         if sel >= 1 and sel <= len(jugadores): 
             jugadores[sel - 1].jugadas.append(ficha_seleccionada)
@@ -140,6 +151,8 @@ class player():
             print("Índice inválido. Inténtelo de nuevo.")
 
     def validar_jugada(self, jugada):
+        for ficha in jugada:
+            print(f"ficha numero {ficha.numero} de color {ficha.color}")
         suma = 0
         comodin_presente = False  # Variable para rastrear si hay comodines en la jugada
         conteo_comodin = 0
@@ -241,38 +254,29 @@ class bot():
         for jugador in jugadores:
             jugadas_en_mesa.extend(jugador.jugadas)
 
-        if self.agregar_ficha(jugadores):
-            return True
-
         if self.jugada_tercia():
-            time.sleep(.5)
-            suma_tercia = sum(f.numero if isinstance(f.numero, int) else 0 for f in self.jugadas)
-            if self.es_jugada_valida(suma_tercia, self.contar_comodines()):
-                time.sleep(.5)
-                print(f"Jugada de {suma_tercia} puntos")
+            if self.jugada_escalera():
+                if self.es_jugada_valida(self.contar_comodines()):
+                    return True
+                else:
+                    self.comer(pozo)
+                    return False
+            elif self.es_jugada_valida(self.contar_comodines()):
                 return True
             else:
-                self.mano.extend(self.jugadas)
-                self.jugadas = []
                 self.comer(pozo)
                 return False
-
-        if self.jugada_escalera():
-            time.sleep(.5)
-            suma_escalera = sum(f.numero if isinstance(f.numero, int) else 0 for f in self.jugadas)
-            suma_escalera_color = sum(f.numero for jugada in self.jugadas for f in jugada)
-            if self.es_jugada_valida(suma_escalera_color, self.contar_comodines()):
-                time.sleep(.5)
-                print(f"Jugada de {suma_escalera} puntos")
+        elif self.jugada_escalera():
+            if self.es_jugada_valida(self.contar_comodines()):
                 return True
             else:
-                self.mano.extend(self.jugadas)
-                self.jugadas = []
                 self.comer(pozo)
                 return False
+        elif self.agregar_ficha(jugadores):
+            return True
+        else:
+            self.comer(pozo) 
 
-        self.comer(pozo)
-        return False
 
     def agregar_ficha(self, jugadores):
         print(f"{self.nombre} intentando agregar una ficha a las jugadas en la mesa")
@@ -287,33 +291,77 @@ class bot():
         return False
     
     def validar_ficha(self, ficha, jugada):
-        for pieza in jugada:
-            if ficha in jugada:
-                return False
+        jugadas_tercia = []
+        jugadas_escalera = []
+        #separar las jugadas por escaleras y tercias/cuartas
+        for i in range(len(jugada) - 1):
+            pieza = jugada[i]
+            siguiente_pieza = jugada[i + 1]
+            if pieza.numero == siguiente_pieza.numero and pieza.color != siguiente_pieza.color:
+                jugadas_tercia.append(pieza)
+            elif pieza.numero == siguiente_pieza.numero + 1 and pieza.color == siguiente_pieza.color:
+                jugadas_escalera.append(pieza)
+        #comprobar si se puede agregar en tercias/cuartas
+        for i in range(len(jugadas_tercia)):
+            pieza = jugadas_tercia[i]
             if ficha.numero == pieza.numero and ficha.color != pieza.color:
                 return True
-        else:
-            return False
-
-    def es_jugada_valida(self, suma_total, num_comodines):
-        suma_por_color = {}
-        for jugada in self.jugadas:
-            for ficha in jugada:
-                if ficha.color in suma_por_color:
-                    suma_por_color[ficha.color] += ficha.numero
-                else:
-                    suma_por_color[ficha.color] = ficha.numero
-
-        suma_valida = True
-        for color_suma in suma_por_color.values():
-            if color_suma < 25:
-                suma_valida = False
+            else:
                 break
-
-        return suma_valida and (suma_total >= 25 or (suma_total >= 12 and num_comodines == 1) or (suma_total >= 9 and num_comodines == 2))
-
-
+        #comprobar si se puede agregar en escaleras
+        for i in range(len(jugadas_escalera)):
+            pieza = jugadas_escalera[i]
+            if ficha.numero == pieza.numero + 1 and ficha.color == pieza.color:
+                return True
+            else:
+                break
+        return False
         
+
+
+    def es_jugada_valida(self, num_comodines):
+        amarillo = []
+        azul = []
+        rojo = []
+        verde = []
+
+        # Separar las jugadas por color
+        for i, ficha in enumerate(self.jugadas):
+            if ficha.color == "amarillo":
+                amarillo.append(ficha)
+            elif ficha.color == "azul":
+                azul.append(ficha)
+            elif ficha.color == "verde":
+                verde.append(ficha)
+            elif ficha.color == "rojo":
+                rojo.append(ficha)
+
+        # Calcular sumas de cada color
+        suma_amarillo = sum(ficha.numero for ficha in amarillo)
+        suma_azul = sum(ficha.numero for ficha in azul)
+        suma_verde = sum(ficha.numero for ficha in verde)
+        suma_rojo = sum(ficha.numero for ficha in rojo)
+
+        # Verificar si alguna suma de color es mayor o igual a 25, o si la suma total es mayor o igual a 25
+        if suma_amarillo >= 25 or suma_azul >= 25 or suma_verde >= 25 or suma_rojo >= 25:
+            return True
+        elif suma_amarillo >= 12 and num_comodines == 1 or suma_azul >= 12 and num_comodines == 1 or suma_verde >= 12 and num_comodines == 1 or suma_rojo >= 12 and num_comodines == 1:
+            return True
+        elif suma_amarillo >= 9 and num_comodines == 2 or suma_azul >= 9 and num_comodines == 2 or suma_verde >= 9 and num_comodines == 2 or suma_rojo >= 9 and num_comodines == 2:
+            return True
+        else:
+            sum_total = suma_amarillo + suma_azul + suma_rojo + suma_verde
+            if sum_total >= 25:
+                return True
+            elif sum_total >= 12 and num_comodines == 1:
+                return True
+            elif sum_total >= 9 and num_comodines == 2:
+                return True
+            else:
+                while self.jugadas:
+                    reg = self.jugadas.pop()
+                    self.mano.append(reg)
+  
     def contar_comodines(self):
         cont_comodin = 0
         for ficha in self.mano:
