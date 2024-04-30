@@ -113,6 +113,7 @@ class player():
                     else:
                         break
                 print(f"size de tus jugadas{len(jugada)}")
+                
                 if self.validar_jugada(jugada):
                     while jugada:
                         agregar = jugada.pop()
@@ -133,7 +134,7 @@ class player():
                     break
                 else:
                     continue
-            
+     #verificar si es valida la jugada       
     def agregar_ficha(self, ficha_seleccionada, jugadores):
         suma_jugada = 0
         for _, jugador in enumerate(jugadores):
@@ -172,7 +173,7 @@ class player():
                 print("Jugada inválida, la suma total de las fichas es menor a 25")
                 self.devolver_fichas(jugada)
                 return False
-
+        #revisar esto jasjaj
         # Verificar si la jugada es una corrida o una tercia/cuarta
         for i, ficha in enumerate(jugada):
             if i < len(jugada) - 1:
@@ -180,6 +181,7 @@ class player():
                 if ficha.numero == '*' or siguiente.numero == '*':
                     self.jugadas.append(ficha)
                     continue
+                #pao revisa esto
                 if ficha.color != siguiente.color:
                     if ficha.numero != siguiente.numero:
                         print("Jugada inválida, no es una corrida")
@@ -190,6 +192,7 @@ class player():
                         print("Jugada inválida, no es una tercia/cuarta")
                         self.devolver_fichas(jugada)
                         return False
+                    
             self.jugadas.append(ficha)
         return True
    
@@ -197,15 +200,15 @@ class player():
         while len(jugada) != 0:
             reg = jugada.pop()
             self.mano.append(reg)    
-        
-    def ordenar_jugada(self, jugada):
-        for i in range(len(jugada) - 1):
-            if jugada[i].numero == "*":
-                jugada[0] = jugada[i]
-            elif jugada[i+1].numero == "*":
-                jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
-            elif jugada[i].numero > jugada[i+1].numero:
-                jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
+      
+    # def ordenar_jugada(self, jugada):
+    #     for i in range(len(jugada) - 1):
+    #         if jugada[i].numero == "*":
+    #             jugada[0] = jugada[i]
+    #         elif jugada[i+1].numero == "*":
+    #             jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
+    #         elif jugada[i].numero > jugada[i+1].numero:
+    #             jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
 
 
     def ganar(self):
@@ -220,6 +223,7 @@ class bot():
         self.nombre = nombre
         self.mano = []
         self.jugadas = []
+
     def llenarManoBot(self):
         return self.mano
     
@@ -289,7 +293,7 @@ class bot():
                     return True
         print("No se pudo agregar ninguna ficha a las jugadas de los otros jugadores")
         return False
-    
+    #verificar logica de validar
     def validar_ficha(self, ficha, jugada):
         jugadas_tercia = []
         jugadas_escalera = []
@@ -299,7 +303,7 @@ class bot():
             siguiente_pieza = jugada[i + 1]
             if pieza.numero == siguiente_pieza.numero and pieza.color != siguiente_pieza.color:
                 jugadas_tercia.append(pieza)
-            elif pieza.numero == siguiente_pieza.numero + 1 and pieza.color == siguiente_pieza.color:
+            elif pieza.numero != siguiente_pieza.numero + 1 and pieza.color == siguiente_pieza.color:
                 jugadas_escalera.append(pieza)
         #comprobar si se puede agregar en tercias/cuartas
         for i in range(len(jugadas_tercia)):
@@ -311,12 +315,12 @@ class bot():
         #comprobar si se puede agregar en escaleras
         for i in range(len(jugadas_escalera)):
             pieza = jugadas_escalera[i]
+            #verificar condicion
             if ficha.numero == pieza.numero + 1 and ficha.color == pieza.color:
                 return True
             else:
                 break
         return False
-        
 
 
     def es_jugada_valida(self, num_comodines):
@@ -391,6 +395,7 @@ class bot():
         print("No se pudo formar una tercia")
         return False
 
+    #verificar lo de los comodines
     def jugada_escalera(self):
             print(f"{self.nombre} intentando hacer una jugada escalera")
             numeros = [f for f in self.mano if f.numero != "*"]
@@ -571,8 +576,7 @@ def main():
     pozo = mezclar_fichas(nJugadores, jugadores)
     
     orden = random.randint(1, nJugadores)
-    table= mesa(jugadores)
-    print(orden)
+    table = mesa(jugadores)
     rondas = 0
 
     while len(jugadores) > 1:
