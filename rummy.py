@@ -99,7 +99,7 @@ class player():
         print()
         self.mostrar_jugadas(self.jugadas)
         while True:
-            sel = int(input("Que deseas hacer? 1.Armar jugada 2.Comer 3.Agregar a jugada "))
+            sel = int(input("Que deseas hacer? 1.Armar jugada 2.Comer 3.Agregar a jugada 4.Terminar turno "))
             if sel == 1:
                 while len(self.jugadas) < 14:
                     self.mostrar_mano(self.mano)
@@ -114,10 +114,8 @@ class player():
                         break
                 print(f"size de tus jugadas{len(jugada)}")
                 
-                if self.validar_jugada(jugada):
-                    while jugada:
-                        agregar = jugada.pop()
-                        self.jugadas.append(agregar)
+                if self.validar(jugada):
+                    self.jugadas.append(jugada)
                     break
                 else:
                     while jugada:
@@ -134,6 +132,12 @@ class player():
                     break
                 else:
                     continue
+            if sel == 4:
+                if len(self.jugadas) == 0:
+                    print("Debes realizar una jugada antes de poder terminar el turno")
+                    continue
+                else:
+                    break
      #verificar si es valida la jugada       
     def agregar_ficha(self, ficha_seleccionada, jugadores):
         suma_jugada = 0
@@ -151,66 +155,93 @@ class player():
         else:
             print("Índice inválido. Inténtelo de nuevo.")
 
-    def validar_jugada(self, jugada):
-        for ficha in jugada:
-            print(f"ficha numero {ficha.numero} de color {ficha.color}")
+    def validar(self, jugada):
         suma = 0
-        comodin_presente = False  # Variable para rastrear si hay comodines en la jugada
-        conteo_comodin = 0
-        # Calcular la suma de los números de las fichas, excluyendo los comodines
         for ficha in jugada:
-            if ficha.numero == "*":
-                comodin_presente = True
-                conteo_comodin += 1
-                continue
-            suma += ficha.numero
-
-        # Verificar si la suma total es menor a 25
-        if suma < 25:
-            if comodin_presente and suma >= 12 or conteo_comodin == 2 and suma < 12:
+            if ficha.numero == '*':
                 pass
             else:
-                print("Jugada inválida, la suma total de las fichas es menor a 25")
-                self.devolver_fichas(jugada)
-                return False
-        #revisar esto jasjaj
-        # Verificar si la jugada es una corrida o una tercia/cuarta
-        for i, ficha in enumerate(jugada):
-            if i < len(jugada) - 1:
-                siguiente = jugada[i+1]
-                if ficha.numero == '*' or siguiente.numero == '*':
-                    self.jugadas.append(ficha)
-                    continue
-                #pao revisa esto
-                if ficha.color != siguiente.color:
-                    if ficha.numero != siguiente.numero:
-                        print("Jugada inválida, no es una corrida")
-                        self.devolver_fichas(jugada)
-                        return False
+                suma += ficha.numero
+        #validar primer jugada
+        if len(self.jugadas) == 0:
+            if suma < 25:
+                print(f"Jugada de {suma} puntos, para que puedas bajar fichas necesitas una suma de 25 puntos ")
+                self.mano.append(jugada)
+            else:
+                self.validar_escalera(jugada)
+                self.validar_tercia(jugada)
+        else:
+            self.validar_escalera(jugada)
+            self.validar_tercia(jugada)
+
+    def ordenar_jugada(self, jugada, key=lambda x: x):
+        if len(jugada) <= 1:
+            return jugada
+        else:
+        # Elegimos el pivote como el elemento medio
+            pivot = key(jugada[len(jugada) // 2])
+
+        # Particionamos la lista en tres partes
+            left = [x for x in jugada if key(x) < pivot]
+            middle = [x for x in jugada if key(x) == pivot]
+            right = [x for x in jugada if key(x) > pivot]
+
+        # Recursivamente aplicamos quicksort a las sublistas izquierda y derecha
+        return self.ordenar_jugada(left, key) + middle + self.ordenar_jugada(right, key)
+    
+    def ficha_key(ficha):
+        color_order = {'amarillo':0, 'azul':1, 'rojo':2, 'verde':3}
+
+        return(color_order[ficha.color], ficha.numero)
+
+    def validar_tercia(self, jugada):
+        numeros = []
+        for ficha in jugada:
+            if ficha.numero == "*":
+                pass
+            else:
+                numeros.append(ficha)
+        
+        self.ordenar_jugada(numeros, key = self.ficha_key())
+        for i in range(len(numeros)):
+            if numeros[i].numero - numeros[i+1].numero == 0 and numeros[i+1].numero - numeros[-1].numero:
+                if numeros[i].color != numeros[i+1].color and numeros[i+1].color != numeros[-1].color:
+                    print("jugada valida")
+                    self.jugadas.append(jugada)
                 else:
-                    if ficha.numero == siguiente.numero:
-                        print("Jugada inválida, no es una tercia/cuarta")
-                        self.devolver_fichas(jugada)
-                        return False
-                    
-            self.jugadas.append(ficha)
-        return True
-   
+                    print("Jugada invalida")
+                    self.mano.append(jugada)
+            else:
+                print("jugada invalida")
+                self.mano.append(jugada)
+
+    def validar_escalera(self, jugada):    
+        numeros = []
+        for ficha in jugada:
+            if ficha.numero == "*":
+                pass
+            else:
+                numeros.append(ficha)
+        self.ordenar_jugada(numeros)
+        for i in range(0, len(numeros), -1):
+            escalera = True
+            if numeros[i].numero - numeros[i-1].numero == 1:
+                continue
+            else:
+                escalera = False
+                print("Jugada invalida")
+                self.mano.append(jugada)
+                break
+        if escalera:
+            print("jugada valida")
+            self.jugadas.append(jugada)
+        
+
     def devolver_fichas(self, jugada):
         while len(jugada) != 0:
             reg = jugada.pop()
             self.mano.append(reg)    
       
-    # def ordenar_jugada(self, jugada):
-    #     for i in range(len(jugada) - 1):
-    #         if jugada[i].numero == "*":
-    #             jugada[0] = jugada[i]
-    #         elif jugada[i+1].numero == "*":
-    #             jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
-    #         elif jugada[i].numero > jugada[i+1].numero:
-    #             jugada[i+1], jugada[i] = jugada[i], jugada[i+1]
-
-
     def ganar(self):
         if len(self.mano) != 0:
             return False
@@ -247,13 +278,11 @@ class bot():
         comodines = [ficha for ficha in self.mano if ficha.numero == "*"]
         numeros = [ficha for ficha in self.mano if ficha.numero != "*"]
         
-        # Ordenar las fichas numéricas en función de su número y color
         numeros.sort(key=lambda x: (x.color, x.numero))
-        
-        # Combinar los comodines y las fichas numéricas ordenadas
         self.mano = comodines + numeros
+        
 
-    def armar_jugada(self, pozo, jugadores):
+    def armar_jugada(self, pozo, rondas,  jugadores):
         jugadas_en_mesa = []
         for jugador in jugadores:
             jugadas_en_mesa.extend(jugador.jugadas)
@@ -517,6 +546,11 @@ class mesa():
         print(f"Inicia el jugador {self.jugadores[self.turno_actual].nombre}")
         return self.jugadores[self.turno_actual]
     
+    def sig_turno(self):
+        self.turno_actual = (self.turno_actual + 1) % len(self.jugadores)
+        print(f"Turno del jugador {self.jugadores[self.turno_actual].nombre}")
+        return self.jugadores[self.turno_actual]
+    
 def crear_fichas():
     print("Creando las fichas...")
     #creando un diccionario con los colores para asignarlos
@@ -539,6 +573,7 @@ def crear_fichas():
                     ficha = fichas(i + 1, color)
                     arreglo.append(ficha)
 
+#modificar la creacion de los jugadores
 def crear_jugadores(Bot, Jugador, incluir_bot=False):
     if incluir_bot:  # Si se incluye un jugador humano
         num_jugadores = 3  # Hay tres bots
@@ -582,29 +617,23 @@ def main():
     while len(jugadores) > 1:
         rondas += 1
         time.sleep(1)
-        os.system('cls' if os.name == 'nt' else 'clear')  # Limpiar la pantalla
+        """ os.system('cls' if os.name == 'nt' else 'clear')  # Limpiar la pantalla
         print(f"****#### RONDA {rondas} ####****")
-        table.mostrar_jugadores()
+        table.mostrar_jugadores() """
         if rondas == 1:
             table.turnos(orden)
         table.ordenar_manos()
         table.mostrar_manos()
-        for jugador in table.jugadores:
-            time.sleep(0.7)
-            if isinstance(jugador, player):
-                print("\nTu turno")
-                table.mostrar_jugadas()
-                jugador.armar_jugada(pozo, rondas, table.jugadores)
-            else:
-                jugador.ordenar_mano()
-                jugador.armar_jugada(pozo, table.jugadores) 
+        #control de turnos  
+        turno = table.sig_turno()
+        if isinstance(turno.nombre, player):
+            table.mostrar_jugadas()
+            table.jugadores[table.turno_actual].armar_jugada(pozo, rondas, table.jugadores)
+        else:
+            table.jugadores[table.turno_actual].ordenar_mano()
+            table.jugadores[table.turno_actual].armar_jugada(pozo, rondas, table.jugadores)
 
-            if jugador.ganar():
-                if isinstance(jugador, player):
-                    print(f"Ha salido el jugador {jugador.nombre}")
-                else:
-                    print(f"Ha salido el bot {jugador.nombre}")
-                jugadores.remove(jugador)
+        
 
 
 if __name__ == "__main__": 
