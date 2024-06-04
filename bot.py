@@ -226,13 +226,39 @@ class bot():
         else:
             return ficha1.numero - ficha2.numero
 
+    def ordenar_numeros(self):
+        #ordenar la mano del bot usando cocktail-sort
+        n = len(self.mano)
+        swapped = True
+        start = 0
+        end = n - 1
+        while swapped:
+            swapped = False
+            for i in range(start, end):
+                if self.comparar_fichas_numeros(self.mano[i], self.mano[i + 1]) > 0:
+                    self.mano[i], self.mano[i + 1] = self.mano[i + 1], self.mano[i]
+                    swapped = True
+            if not swapped:
+                break
+            swapped = False
+            end -= 1
+            for i in range(end - 1, start - 1, -1):
+                if self.comparar_fichas_numeros(self.mano[i], self.mano[i + 1]) > 0:
+                    self.mano[i], self.mano[i + 1] = self.mano[i + 1], self.mano[i]
+                    swapped = True
+
+            start += 1
+
+    def comparar_fichas_numeros(self, ficha1, ficha2):
+        return ficha1.numero - ficha2.numero
+
     def comer_bot(self, pozo):
         if len(pozo) == 0:
             return
-        print(f"El {self.nombre} ha comido")
         ficha = pozo.pop()
+        print(f"El {self.nombre} ha comido la ficha {ficha.numero} {ficha.color}")
         self.mano.append(ficha) 
-
+    
     #agregar la opcion de comprobar las jugadas de los demas jugadores
     def planear_jugadas(self, rondas, pozo, jugadores):
         self.ordenar_mano_bot()
@@ -243,17 +269,19 @@ class bot():
                     continue
                 else:
                     cont_jugadas += 1
-        print(f'En la mesa hay {cont_jugadas} jugadas')
-        if rondas <= 10 or cont_jugadas:
+
+        if len(self.jugadas) < 2:
+            if self.jugada_greedy():
+                self.mostrar_jugadas()
+                self.mostrar_mano()
+            else:
+                self.comer_bot(pozo)
+        else:
             if self.jugada_lazy():
                 self.mostrar_jugadas()
                 self.mostrar_mano()
             else:
                 self.comer_bot(pozo)
-        elif rondas > 11 or cont_jugadas >= 5:
-            #agregar la estrategia greedy para no perder
-            print('Hola')
-        
     
     def jugada_lazy(self):
         if self.tercia():
@@ -263,15 +291,93 @@ class bot():
                 return True
             else:
                 return False
+            
+    def jugada_greedy(self):
+        self.ordenar_numeros()
+        jugadas_greedy = []
+        jugada_copy = self.mano[:]
+        jugadas_validas = []
+        visto = set()
 
+        #para separar todas las tercias posibles
+        for ficha in jugada_copy:
+                if ficha.numero in visto:
+                    continue
+                coincidencias = [ficha]
+                for comprobar in jugada_copy:
+                    if ficha.numero == comprobar.numero and ficha != comprobar:
+                        coincidencias.append(comprobar)
+                    if len(coincidencias) == 3:
+                        break
+                if len(coincidencias) == 3:
+                    jugadas_greedy.extend(coincidencias)
+                    visto.add(ficha.numero)
 
+        jugadas_validas = self.dividir_tercias(jugadas_greedy) #se agregan las tercias a las jugadas validas
+        
+        #separar todas las escaleras posibles
+        visto.clear()
+        self.ordenar_mano_bot()
+
+        escalera = [self.mano[0]]  # Inicializamos la escalera con la primera ficha de la mano
+        escalera_valida = []
+        for i in range(1, len(self.mano)):
+            ficha_actual = self.mano[i]
+            ficha_anterior = self.mano[i - 1]
+
+            # Verificar si las fichas tienen el mismo color y son consecutivas
+            if (ficha_actual.color == ficha_anterior.color) and (ficha_actual.numero == ficha_anterior.numero + 1):
+                escalera.append(ficha_actual)
+            elif ficha_actual.numero != ficha_anterior.numero:  # Si no son consecutivas y no tienen el mismo número
+                escalera = [ficha_actual]  # Iniciar una nueva escalera
+
+            if len(escalera) >= 3:
+                escalera_valida.append(escalera)
+                escalera = [ficha_actual] #resetear la escalera cuando se agreguen
+        
+        jugadas_validas += escalera_valida
+
+        suma_jugada = 0
+        if not self.jugadas:
+            if not jugadas_validas:
+                return False
+            else:
+                for jugada in jugadas_validas:
+                    for ficha in jugada:
+                        suma_jugada += ficha.numero
+                if suma_jugada < 25:
+                    return False
+                else:
+                    for jugada in jugadas_validas:
+                        self.jugadas.append(jugada)
+                        for ficha in jugada:
+                            if ficha in self.mano:
+                                self.mano.remove(ficha)
+                    return True       
+        
+        if not jugadas_validas:
+            return False
+        else:
+            for jugada in jugadas_validas:
+                self.jugadas.append(jugada)
+                for ficha in jugada:
+                    if ficha in self.mano:
+                        self.mano.remove(ficha)
+            return True
+    
+    #modificar para que solamente detecte una tercia, no varias porque seria como el greedy
     def tercia(self):
         tercia = []
         visto = set()
         suma = 0
+        comodines = []
         # Copiar self.mano para evitar problemas de modificación durante la iteración
         mano_copia = self.mano[:]
         
+        for ficha in mano_copia:
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                comodines.append(ficha)
+
         for ficha in mano_copia:
             if ficha.numero in visto:
                 continue
@@ -281,53 +387,62 @@ class bot():
                     coincidencias.append(comprobar)
                 if len(coincidencias) == 3:
                     break
+                elif len(coincidencias) == 2 and len(comodines) == 1:
+                    break
+                elif len(coincidencias) == 1 and len(comodines) == 2:
+                    break
             if len(coincidencias) == 3:
                 tercia.extend(coincidencias)
                 visto.add(ficha.numero)
+            elif len(coincidencias) == 2 and len(comodines) == 1:
+                coincidencias.extend(comodines)
+                tercia.extend(coincidencias)
+                visto.add(ficha.numero)
+            elif len(coincidencias) == 1 and len(comodines) == 2:
+                coincidencias.extend(comodines)
+                tercia.extend(coincidencias)
+                visto.add(ficha.numero)
 
-        if len(self.jugadas) > 0:
+        if not self.jugadas:
             if suma >= 25:
-                if self.comprobar_tercia(tercia):
+                if self.comprobar_tercia(tercia, comodines):
+                    tercia.clear()
+                    comodines.clear()
+                    return True
+                else:
+                    comodines.clear()
+                    tercia.clear()
+                    return False
+            elif suma < 25 and len(comodines) >= 1:
+                print("intentando jugada con comodines")
+                if self.comprobar_tercia(tercia,comodines):
+                    comodines.clear()
                     tercia.clear()
                     return True
                 else:
+                    comodines.clear()
                     tercia.clear()
                     return False
-            else:
-                print("La primer jugada debe de ser mayor a 25 puntos")
-                tercia.clear()
-                return False
         else:
-            if self.comprobar_tercia(tercia):
+            if self.comprobar_tercia(tercia, comodines):
+                comodines.clear()
                 tercia.clear()
                 return True
             else:
+                comodines.clear()
                 tercia.clear()
                 return False
-        
-    def comprobar_tercia(self, tercia):
-        if len(tercia) % 3 != 0:
-            return False
-        
-        sub_size = 3
-        arr_tercias = []
-        sumar_tercias = 0
-
-        for i in range(0, len(tercia), sub_size):
-            sub_arreglo = tercia[i: i + sub_size]
-            arr_tercias.append(sub_arreglo)
-        
-        print('Posibles tercias: ')
-        for arr in arr_tercias:
             
-            for ficha in arr:
-                print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
-            print()
+    def comprobar_tercia(self, tercia, comodines):
+        
+        arr_tercias = self.dividir_tercias(tercia)
 
-        tercias_validas = []
+        tercias = []
         for arr in arr_tercias:
             es_valida = True
             for i, ficha in enumerate(arr):
+                if ficha.numero == 0 or ficha.color == 'comodin':
+                    continue
                 if i == 0:
                     continue  # Saltar la primera ficha
                 if ficha.numero != arr[0].numero:
@@ -336,26 +451,44 @@ class bot():
                     es_valida = False
                     break
             if es_valida:
-                tercias_validas.append(arr)
+                tercias.append(arr)
 
         if len(arr_tercias) == 0:
             return False
-        
-        for arr in tercias_validas:
-            for ficha in arr:
-                sumar_tercias += ficha.numero
-        
-        if sumar_tercias < 25 and len(self.jugadas) == 0:
-            return False
-        
-        print('Jugada valida')
-        for arr in tercias_validas:
+
+        for arr in tercias:
+            self.jugadas.append(arr)
             for ficha in arr:
                 if ficha in self.mano:
                     self.mano.remove(ficha)
-            self.jugadas.append(arr)
-        return True
+            return True
+
+
         
+    def dividir_tercias(self, jugada):
+        #esta funcion la ocupa comprobar_tercia y jugada greedy
+        jugadas_validas = []
+        arr_tercias = []
+        sub_size = 3
+        for i in range(0, len(jugada), sub_size):
+                sub_arreglo = jugada[i: i + sub_size]
+                arr_tercias.append(sub_arreglo)
+        for arr in arr_tercias:
+            valido = True
+            for i, ficha in enumerate(arr):
+                if i == 0:
+                    continue
+                if ficha.numero != arr[0].numero:
+                    break
+                elif ficha.color == arr[i-1].color:
+                    valido = False
+                    break
+                else:
+                    continue
+            if valido:
+                jugadas_validas.append(arr)
+        return jugadas_validas
+    
     def escalera(self):
         escalera = [self.mano[0]]  # Inicializamos la escalera con la primera ficha de la mano
 
@@ -386,13 +519,9 @@ class bot():
         suma_escalera = 0
         for ficha in escalera:
             suma_escalera += ficha.numero
-
-        print("Escalera: ")
-        for ficha in escalera:
-            print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
    
         if suma_escalera < 25 and not self.jugadas:
-            print("La primer jugada debe de ser mayor a 25 puntos")
+            print("La primer escalera debe de ser mayor a 25 puntos")
             return False
         else:
             print('Se realizo una escalera')
@@ -401,10 +530,6 @@ class bot():
                 if ficha in self.mano:
                     self.mano.remove(ficha)
             return True
-
-
-
-        
 
 
 def crear_fichas():
@@ -450,6 +575,7 @@ while i <= 9:
     
     for j in range(len(table.jugadores)):
         table.jugadores[table.turno_actual].planear_jugadas(rondas, pozo, table.jugadores)
+        print()
         table.sig_turno()
         time.sleep(1)
     
