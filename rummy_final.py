@@ -26,8 +26,7 @@ class mesa():
         self.turno_actual = 0
         self.modo = False
 
-    def modalidad(self):
-            modalidad = 1
+    def modalidad(self, modalidad):
             if modalidad == 1:
                 self.crear_jugadores(jugador = False)
             elif modalidad == 2:
@@ -37,6 +36,8 @@ class mesa():
         if jugador:
             for i in range(3):
                 self.jugadores.append(bot(f'bot{i+1}'))
+            nombre = input('Ingrese su nombre ')
+            self.jugadores.append(player(f'{nombre}'))
         else:
             print('Se va a jugar solamente con bots')
             for i in range(4):
@@ -49,22 +50,31 @@ class mesa():
 
     def mezclar_fichas(self):
         n = len(self.jugadores)
+        if n == 0:
+            print('No hay jugadores en la mesa')
+            exit(1)
         pozo = sum([fichas.amarillo, fichas.azul, fichas.verde, fichas.rojo, fichas.comodin], [])
         random.shuffle(pozo)
+        
         for i in range(n):
-            if isinstance(self.jugadores[i], bot):
+            if isinstance(self.jugadores[i], player):
+                mano_jugador = self.jugadores[i].llenar_mano()
+            else:
                 mano_jugador = self.jugadores[i].llenar_mano_bot()
             for j in range(14):
                 ficha = pozo.pop()
                 mano_jugador.append(ficha)
+
+        print(f'Despues de repartir fichas el pozo se quedo con {len(pozo)} fichas')
         return pozo     
 
     def mostrar_jugadas(self):
+        
         for jugador in self.jugadores:
+            print(f'Jugadas de {jugador.nombre}: ')
             if len(jugador.jugadas) == 0:
                 print('[]')
             else:
-                print(f'Jugadas de {jugador.nombre}: ')
                 for jugada in jugador.jugadas:
                     for ficha in jugada:
                         color = COLOR_RESET
@@ -119,6 +129,408 @@ class mesa():
         self.jugadores.pop(indice)
         if self.turno_actual >= len(self.jugadores):
             self.turno_actual = 0
+
+class player:
+
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.jugadas = []
+        self.mano = []
+
+    def llenar_mano(self):
+        return self.mano
+    
+    def mostrar_mano(self, fichas):
+        if len(self.mano) == 0:
+            print("El jugador no tiene fichas en su mano")
+        else:
+            print("Tu mano: (el numero a la izquierda es el indice de la ficha)")
+            cont = 0
+            for i,ficha in enumerate(fichas):
+                color = COLOR_RESET
+                if ficha.color == "amarillo":
+                    color = COLOR_YELLOW
+                elif ficha.color == "azul":
+                    color = COLOR_BLUE
+                elif ficha.color == "rojo":
+                    color = COLOR_RED
+                elif ficha.color == "verde":
+                    color = COLOR_GREEN
+                elif ficha.color == "comodin":
+                    color = COLOR_WHITE
+                cont += 1
+                print(f"{cont}:" + '[' + color + f"{ficha.numero}" + COLOR_RESET + '] ', end='')
+
+                if (i + 1) % 7 == 0:
+                    print()
+            print()
+
+    def mostrar_jugadas(self, jugadas):
+        if len(jugadas) == 0:
+            print("[]")
+        else:
+            print(f'Jugadas: ')
+            cont_jugadas = 0
+            for jugada in jugadas:
+                cont_jugadas += 1
+                print(f'Jugada {cont_jugadas}: ')
+                for ficha in jugada:
+                    color = COLOR_RESET
+                    if ficha.color == "amarillo":
+                        color = COLOR_YELLOW
+                    elif ficha.color == "azul":
+                        color = COLOR_BLUE
+                    elif ficha.color == "rojo":
+                        color = COLOR_RED
+                    elif ficha.color == "verde":
+                        color = COLOR_GREEN
+                    elif ficha.color == "comodin":
+                        color = COLOR_WHITE
+                    print('[' + color + f"{ficha.numero}" + COLOR_RESET + ']', end='')
+                print()
+
+    def haciendo_jugada(self, jugada):
+        if len(jugada) == 0:
+            print('[]')
+        else:
+            for ficha in jugada:
+                color = COLOR_RESET
+                if ficha.color == "amarillo":
+                    color = COLOR_YELLOW
+                elif ficha.color == "azul":
+                    color = COLOR_BLUE
+                elif ficha.color == "rojo":
+                    color = COLOR_RED
+                elif ficha.color == "verde":
+                    color = COLOR_GREEN
+                elif ficha.color == "comodin":
+                    color = COLOR_WHITE
+                print('[' + color + f"{ficha.numero}" + COLOR_RESET + '] ', end='')
+
+    def ordenar_mano(self):
+        #ordenar mano usando insertion sort
+        for i in range(1, len(self.mano)):
+            ficha_actual = self.mano[i]
+            j = i - 1
+            while j >= 0 and (self.mano[j].color > ficha_actual.color or (self.mano[j].color == ficha_actual.color and self.mano[j].numero > ficha_actual.numero)):
+                self.mano[j + 1] = self.mano[j]
+                j -= 1
+            self.mano[j + 1] = ficha_actual
+        #mover los comodines al final del arreglo
+        comodines = [ficha for ficha in self.mano if ficha.numero == 0 and ficha.color == "comodin"]
+        self.mano = [ficha for ficha in self.mano if ficha.numero != 0 and ficha.color != "comodin"]
+        self.mano.extend(comodines)
+    
+    def comer(self, pozo):
+        if len(pozo) == 0:
+            print("No hay mas fichas en el pozo")
+            return
+        comer = pozo.pop()
+
+        print(f"Tomaste la ficha {comer.numero} de color {comer.color}")
+        self.mano.append(comer)
+        
+        return 
+
+    def ordenar_numeros(self, jugada):
+        #ordenar la mano del bot usando cocktail-sort
+        n = len(jugada)
+        swapped = True
+        start = 0
+        end = n - 1
+        while swapped:
+            swapped = False
+            for i in range(start, end):
+                if self.comparar_fichas_numeros(jugada[i], jugada[i + 1]) > 0:
+                    jugada[i], jugada[i + 1] = jugada[i + 1], jugada[i]
+                    swapped = True
+            if not swapped:
+                break
+            swapped = False
+            end -= 1
+            for i in range(end - 1, start - 1, -1):
+                if self.comparar_fichas_numeros(jugada[i], jugada[i + 1]) > 0:
+                    jugada[i], jugada[i + 1] = jugada[i + 1], self.mano[i]
+                    swapped = True
+
+            start += 1
+
+    def comparar_fichas_numeros(self, ficha1, ficha2):
+        return ficha1.numero - ficha2.numero
+
+
+    def armar_jugada(self, pozo, jugadores):
+        cont_jugadas = len(self.jugadas)
+        jugadas = []
+        jugada = []
+        self.ordenar_mano()
+        self.mostrar_mano(self.mano)
+        while True:
+            print()
+            opcion = int(input("Que desea hacer? 1.Armar jugada 2.Comer  3. Agregar a jugada 4. Terminar turno "))
+            if opcion == 1:
+                while len(jugada) < 14:
+                    time.sleep(.4)
+                    os.system('cls' if os.name == 'nt' else 'clear')  # Limpiar la pantalla
+                    self.mostrar_mano(self.mano)
+                    self.haciendo_jugada(jugada)
+                    print()
+                    indice = input("Ingrese el indice de la ficha que desea agregar (Para salir presione q): ")
+                    if indice.lower() == "q":
+                        self.mano.extend(jugada)
+                        jugada.clear()
+                        break
+                    indice = int(indice)
+                    if indice < 0 or indice > len(self.mano):
+                        print("Ingrese un indice valido")
+                        continue
+                    else:
+                        ficha = self.mano.pop(indice-1)
+                        jugada.append(ficha)
+                        if len(jugada) >= 3:
+                            sel = int(input("Desea agregar otra ficha a su jugada? 1.Si 2.No"))
+                            if sel == 1:
+                                continue
+                            elif sel == 2:
+                                nueva_jugada = int(input("Desea realizar otra jugada? 1.Si 2.No"))
+                                if nueva_jugada == 1:
+                                    jugadas.append(list(jugada))
+                                    jugada.clear()
+                                    continue
+                                elif nueva_jugada == 2:
+                                    jugadas.append(list(jugada))
+                                    jugada.clear()
+                                    if self.validar(jugadas):
+                                        self.mostrar_jugadas(self.jugadas)
+                                        jugadas.clear()
+                                        break
+                                    else:
+                                        print('Hubo una jugada invalida')
+                                        jugada.clear()
+                                        jugadas.clear()
+                                        continue
+                                else:
+                                    time.sleep(.4)
+                                    continue
+                        else:
+                            continue
+            elif opcion == 2:
+                if cont_jugadas != len(self.jugadas):
+                    print('No puedes comer si realizaste al menos una jugada valida')
+                    continue
+                else:
+                    self.comer(pozo)
+                    break
+            elif opcion == 3:
+                if len(self.jugadas) == 0:
+                    print('No se pueden agregar fichas a otras jugadas si no has hecho una jugada')
+                    continue
+                else:
+                    if self.agregar_a_jugada(jugadores):
+                        break
+                    else:
+                        continue
+
+            elif opcion == 4:
+                if cont_jugadas != len(self.jugadas):
+                    break
+                else:
+                    print("Para terminar el turno debes de haber realizado una jugada antes")
+
+    def agregar_a_jugada(self, jugadores):
+        while True:
+            for i, jugador in enumerate(jugadores):
+                print(f'{i+1}: {jugador.nombre}')
+            
+            jugador_sel = input('Ingrese el índice del jugador (presione q para cancelar): ')
+            if jugador_sel.lower() == 'q':
+                return False
+
+            try:
+                jugador_sel = int(jugador_sel)
+                if jugador_sel < 1 or jugador_sel > len(jugadores):
+                    print("Índice inválido")
+                    continue
+            except ValueError:
+                print("Por favor ingrese un número válido")
+                continue
+
+            jugador = jugadores[jugador_sel - 1]
+            if len(jugador.jugadas) == 0:
+                print('El jugador no tiene jugadas')
+                continue
+            
+            while True:
+                self.mostrar_jugadas(jugador.jugadas)
+                try:
+                    jugada_sel = int(input('Ingrese el índice de la jugada: '))
+                    if jugada_sel < 1 or jugada_sel > len(jugador.jugadas):
+                        print("Índice inválido")
+                        continue
+                except ValueError:
+                    print("Por favor ingrese un número válido")
+                    continue
+
+                self.mostrar_mano(self.mano)
+                try:
+                    ficha_sel = int(input('Ingrese el índice de la ficha que desea agregar a esa jugada: '))
+                    if ficha_sel < 1 or ficha_sel > len(self.mano):
+                        print("Índice inválido")
+                        continue
+                except ValueError:
+                    print("Por favor ingrese un número válido")
+                    continue
+
+                ficha = self.mano.pop(ficha_sel - 1)
+                jugadores[jugador_sel - 1].jugadas[jugada_sel - 1].extend([ficha])
+                if self.validar_agregar_ficha(jugadores[jugador_sel - 1].jugadas[jugada_sel - 1]):
+                    return True
+                else:
+                    jugadores[jugador_sel - 1].jugadas[jugada_sel - 1].pop()
+                    self.mano.append(ficha)
+                    print("La ficha no es válida en esta jugada, se ha devuelto a la mano")
+                    break
+
+                
+    def validar_agregar_ficha(self, jugada):
+        self.ordenar_numeros(jugada)
+        print('Jugada con la ficha agregada')
+        for ficha in jugada:
+            print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
+
+        if self.detectar_tercia(jugada):
+            return True
+        else:
+            if self.detectar_escalera(jugada):
+                return True
+            else:
+                return False
+        
+    def detectar_tercia(self, jugada):
+        for i, ficha in enumerate(jugada):
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                continue
+            if i == 0:
+                continue
+            if ficha.numero != jugada[0].numero:
+                return False
+            elif ficha.color == jugada[i-1].color or ficha.color == jugada[0].color:
+                return False
+            
+        return len(jugada) == 3
+
+    def detectar_escalera(self, jugada):
+        for i, ficha in enumerate(jugada):
+            if i == 0:
+                continue
+            if abs(ficha.numero - jugada[i-1].numero) != 1:
+                return False
+            if ficha.color != jugada[i-1].color:
+                return False
+        return True
+
+    def validar(self, jugadas):
+        suma_jugadas = 0
+        cont_comodines = 0
+        cont_jugadas = len(self.jugadas)
+        for jugada in jugadas:
+            for ficha in jugada:
+                if ficha.numero == 0 or ficha.color == 'comodin':
+                    cont_comodines += 1
+                    pass
+                suma_jugadas += ficha.numero
+        
+        if not self.jugadas:
+            if suma_jugadas >= 25:
+                print('jugada(s) de 25 o mas puntos')
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            pass
+            elif suma_jugadas > 16 and cont_comodines == 1:
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            return False
+            elif suma_jugadas > 9 and cont_comodines == 2:
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        return True
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            return True
+                        else:
+                            self.mano.extend(jugada)
+                            return False
+        else:
+            for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            pass
+        if len(self.jugadas) == cont_jugadas:
+            return False
+        else:
+            return True
+
+    def validar_tercia(self, jugada):
+        print('validando tercia')
+        for i in range(len(jugada)-1):
+            ficha = jugada[i]
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                pass
+            if ficha.numero == jugada[0].numero and ficha.color != jugada[i-1].color:
+                continue
+            else:
+                return False
+        return True
+        
+    def validar_escalera(self, jugada):
+        comodin = False
+        print('validando escalera')
+        for i, ficha in enumerate(jugada):            
+            if i == 0:
+                continue
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                comodin = True
+                pass
+            if abs(ficha.numero - jugada[i-1].numero) != 1 and not comodin:
+                return False
+            
+            if abs(ficha.numero - jugada[i-1].numero) == 1 and ficha.color == jugada[0].color:
+                continue
+            else:
+                return False
+        return True
+    
+    def ganar(self):
+        if len(self.mano) == 0:
+            return True
+        else:
+            return False
+
 
 class bot():
     def __init__(self, nombre):
@@ -257,10 +669,12 @@ class bot():
         print(f"El {self.nombre} ha comido la ficha {ficha.numero} {ficha.color}")
         self.mano.append(ficha) 
     
-    #agregar la opcion de comprobar las jugadas de los demas jugadores
     def planear_jugadas(self, rondas, pozo, jugadores):
         self.ordenar_mano_bot()
         cont_jugadas = 0
+        if self.jugada_libre(rondas):
+            return True
+        
         for jugador in jugadores:
             for jugadas in jugador.jugadas:
                 if not jugadas:
@@ -275,13 +689,11 @@ class bot():
                     for jugada in jugador.jugadas:
                         self.ordenar_numeros(jugada)
                 self.mostrar_jugadas()
-                self.mostrar_mano()
             else:
                 self.comer_bot(pozo)
         else:
             if self.jugada_lazy():
                 self.mostrar_jugadas()
-                self.mostrar_mano()
             else:
                 self.comer_bot(pozo)
     
@@ -294,7 +706,6 @@ class bot():
             else:
                 return False
 
-          
     def jugada_greedy(self):
         self.ordenar_numeros(self.mano)
         jugadas_greedy = []
@@ -368,10 +779,15 @@ class bot():
                         self.mano.remove(ficha)
             return True
     
+    def jugada_libre(self, rondas):
+        if rondas > 10 and not self.jugadas:
+            return True
+        else:
+            return True
 
     def agregar_a_jugadas(self, jugadores, rondas):
         if rondas ==1 or not self.jugadas:
-            return False
+            return
         
         jugadas = []
         for jugador in jugadores:
@@ -396,6 +812,9 @@ class bot():
                 if (ficha.numero == jugada[0].numero and ficha.color not in colores) and len(jugada) == 3:
                     print(f'{self.nombre} agrego {ficha.numero} color: {ficha.color} a una jugada tercia')
                     jugada.append(ficha)
+                    print('Jugada con la ficha agregada:')
+                    for ficha in jugada:
+                        print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
                     break
                 else:
                     continue
@@ -409,13 +828,20 @@ class bot():
         for jugada in jugadas_escalera:
             primera_ficha = jugada[0]
             ultima_ficha = jugada[-1]
+            numeros = set()
+            for ficha in jugada:
+                numeros.add(ficha.numero)
             for ficha in self.mano: 
-                if ficha in jugada:
-                    pass
                 if (abs(ficha.numero - primera_ficha.numero) == 1 or abs(ficha.numero - ultima_ficha.numero) == 1) and ficha.color == primera_ficha.color:
-                    print(f'{self.nombre} agrego {ficha.numero} color: {ficha.color} a una jugada escalera')
-                    jugada.append(ficha)
-                    break
+                    if ficha.numero not in numeros:
+                        print(f'{self.nombre} agrego {ficha.numero} color: {ficha.color} a una jugada escalera')
+                        jugada.append(ficha)
+                        print('Jugada con la ficha agregada:')
+                        for ficha in jugada:
+                            print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
+                        break
+                    else:
+                        continue
                 else:
                     continue
             break
@@ -427,7 +853,7 @@ class bot():
 
 
         self.mostrar_mano()
-        
+        return 
         """print('\nmano actualizada')
         for ficha in mano_bot:
             print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
@@ -440,7 +866,6 @@ class bot():
             for ficha in jugada:
                 print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
             print() """
-
 
     def detectar_tercia(self, jugada):
         for i, ficha in enumerate(jugada):
@@ -455,7 +880,6 @@ class bot():
             
         return len(jugada) == 3
 
-
     def detectar_escalera(self, jugada):
         for i, ficha in enumerate(jugada):
             if i == 0:
@@ -466,8 +890,6 @@ class bot():
                 return False
         return True
         
-
-
     def cuarta(self):
         cuarta = []
         visto = set()
@@ -672,6 +1094,14 @@ class bot():
                     self.mano.remove(ficha)
             return True
 
+    def ganar(self):
+        if len(self.mano) == 0:
+            return True
+        else:
+            return False
+
+
+
 def crear_fichas():
     print("Creando las fichas...")
     #creando un diccionario con los colores para asignarlos
@@ -694,33 +1124,74 @@ def crear_fichas():
                     ficha = fichas(i + 1, color)
                     arreglo.append(ficha)
 
+
+
 table = mesa()
+modalidad = int(input("Ingrese el modo de juego 1.CPU only 2.Jugador vs CPU "))
+table.modalidad(modalidad)
 crear_fichas()
-table.modalidad()
+
+
 pozo = table.mezclar_fichas()
 i = 0
 orden = random.randint(0,4)
 rondas = 0
-table.mostrar_jugadores()
+
+
+
+
 table.mostrar_manos()
-while i <= 9:
+
+for jugador in table.jugadores:
+    if len(jugador.mano) == 0:
+        print("Hubo un error, el jugador no tiene fichas")
+        exit(1)
+
+
+
+while len(table.jugadores) > 1:
     #os.system('cls' if os.name == 'nt' else 'clear') 
     rondas += 1
     print(f"####----> RONDA {rondas} <----#####")
     if rondas == 1:
         table.turno(orden)
-    
+    table.mostrar_manos()
+    table.mostrar_jugadas()
     if len(table.jugadores) == 1:
         break
-    
+    if len(pozo) == 0:
+        print('El pozo se quedo sin fichas')
+        break
     for j in range(len(table.jugadores)):
-        table.jugadores[table.turno_actual].planear_jugadas(rondas, pozo, table.jugadores)
-        print()
-        table.sig_turno()
-        time.sleep(1)
+        if table.jugadores[table.turno_actual].ganar():
+            table.eliminar_jugador(table.turno_actual)
+
+        if isinstance(table.jugadores[table.turno_actual], player):
+            table.jugadores[table.turno_actual].armar_jugada(pozo, table.jugadores)
+            print()
+            table.sig_turno()
+            time.sleep(1)
+        else:
+            if table.jugadores[table.turno_actual].planear_jugadas(rondas, pozo, table.jugadores):
+                table.eliminar_jugador(table.turno_actual)
+            print()
+            table.sig_turno()
+            time.sleep(1)
     
-    i += 1
+    
 
 
-table.mostrar_manos()
-table.mostrar_jugadas()
+
+
+
+
+
+
+
+
+
+
+
+
+
+

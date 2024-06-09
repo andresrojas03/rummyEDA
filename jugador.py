@@ -53,12 +53,32 @@ class player:
                     print()
             print()
 
-    def mostrar_jugadas(self, fichas):
-        if len(fichas) == 0:
+    def mostrar_jugadas(self, jugadas):
+        if len(jugadas) == 0:
             print("[]")
         else:
             print("Tus jugadas: ")
-            for ficha in fichas:
+            for jugada in jugadas:
+                for ficha in jugada:
+                    color = COLOR_RESET
+                    if ficha.color == "amarillo":
+                        color = COLOR_YELLOW
+                    elif ficha.color == "azul":
+                        color = COLOR_BLUE
+                    elif ficha.color == "rojo":
+                        color = COLOR_RED
+                    elif ficha.color == "verde":
+                        color = COLOR_GREEN
+                    elif ficha.color == "comodin":
+                        color = COLOR_WHITE
+                    print('[' + color + f"{ficha.numero}" + COLOR_RESET + '] ', end='')
+                print()
+
+    def haciendo_jugada(self, jugada):
+        if len(jugada) == 0:
+            print('[]')
+        else:
+            for ficha in jugada:
                 color = COLOR_RESET
                 if ficha.color == "amarillo":
                     color = COLOR_YELLOW
@@ -87,7 +107,11 @@ class player:
         self.mano.extend(comodines)
     
     def comer(self, pozo):
+        if len(pozo) == 0:
+            print("No hay mas fichas en el pozo")
+            return
         comer = pozo.pop()
+
         print(f"Tomaste la ficha {comer.numero} de color {comer.color}")
         self.mano.append(comer)
         
@@ -95,18 +119,20 @@ class player:
 
 
     def armar_jugada(self, pozo):
+        cont_jugadas = len(self.jugadas)
+        jugadas = []
         jugada = []
         self.ordenar_mano()
         self.mostrar_mano(self.mano)
         while True:
             print()
-            opcion = int(input("Que desea hacer? 1.Armar jugada 2.Comer 3. Terminar turno "))
+            opcion = int(input("Que desea hacer? 1.Armar jugada 2.Comer  3. Agregar a jugada 4. Terminar turno "))
             if opcion == 1:
                 while len(jugada) < 14:
                     time.sleep(.4)
                     os.system('cls' if os.name == 'nt' else 'clear')  # Limpiar la pantalla
                     self.mostrar_mano(self.mano)
-                    self.mostrar_jugadas(jugada)
+                    self.haciendo_jugada(jugada)
                     print()
                     indice = input("Ingrese el indice de la ficha que desea agregar (Para salir presione q): ")
                     if indice.lower() == "q":
@@ -114,7 +140,7 @@ class player:
                         jugada.clear()
                         break
                     indice = int(indice)
-                    if indice < 0 or indice > 14:
+                    if indice < 0 or indice > len(self.mano):
                         print("Ingrese un indice valido")
                         continue
                     else:
@@ -125,100 +151,136 @@ class player:
                             if sel == 1:
                                 continue
                             elif sel == 2:
-                                if self.validar(jugada):
-                                    self.mostrar_jugadas(self.jugadas)
-                                    break
+                                nueva_jugada = int(input("Desea realizar otra jugada? 1.Si 2.No"))
+                                if nueva_jugada == 1:
+                                    jugadas.append(list(jugada))
+                                    jugada.clear()
+                                    continue
+                                elif nueva_jugada == 2:
+                                    jugadas.append(list(jugada))
+                                    jugada.clear()
+                                    if self.validar(jugadas):
+                                        self.mostrar_jugadas(self.jugadas)
+                                        jugadas.clear()
+                                        break
+                                    else:
+                                        print('Hubo una jugada invalida')
+                                        jugada.clear()
+                                        jugadas.clear()
+                                        continue
                                 else:
                                     time.sleep(.4)
                                     continue
                         else:
                             continue
             elif opcion == 2:
-                self.comer(pozo)
-                break
-            elif opcion == 3:
-                if len(jugada) >= 3 or len(self.jugadas) >= 3:
+                if cont_jugadas != len(self.jugadas):
+                    print('No puedes comer si realizaste al menos una jugada valida')
+                    continue
+                else:
+                    self.comer(pozo)
+                    break
+
+            elif opcion == 4:
+                if cont_jugadas != len(self.jugadas):
                     break
                 else:
                     print("Para terminar el turno debes de haber realizado una jugada antes")
-        return int(input("Desea seguir? 1.Si 2.No "))
         
-    def validar(self, jugada):
-        suma = 0
-        comodin = False
-        cont_comodin = 0
-        for ficha in jugada:
-            if ficha.color == "comodin":
-                comodin = True
-                cont_comodin += 1
-            else:
-                suma += ficha.numero
-
-        if len(self.jugadas) < 3:
-            if suma < 25:
-                if cont_comodin == 1 and suma > 16:
-                    if self.validar_tercia(jugada) or self.validar_escalera(jugada):
-                        self.jugadas.extend(jugada)
-                        jugada.clear()  
+    def validar(self, jugadas):
+        suma_jugadas = 0
+        cont_comodines = 0
+        cont_jugadas = len(self.jugadas)
+        for jugada in jugadas:
+            for ficha in jugada:
+                if ficha.numero == 0 or ficha.color == 'comodin':
+                    cont_comodines += 1
+                    pass
+                suma_jugadas += ficha.numero
+        
+        if not self.jugadas:
+            if suma_jugadas >= 25:
+                print('jugada(s) de 25 o mas puntos')
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            pass
+            elif suma_jugadas > 16 and cont_comodines == 1:
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            return False
+            elif suma_jugadas > 9 and cont_comodines == 2:
+                for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
                         return True
                     else:
-                        print("Jugada invalida, regresando las fichas")
-                        self.mano.extend(jugada)
-                        jugada.clear()  
-                        return False
-                elif cont_comodin == 2 and suma > 9:
-                    if self.validar_tercia(jugada) or self.validar_escalera(jugada):
-                        self.jugadas.extend(jugada)
-                        jugada.clear()  
-                        return True
-                    else:
-                        print("Jugada invalida, regresando las fichas")
-                        self.mano.extend(jugada)
-                        jugada.clear()  
-                        return False
-                    
-                print("Tu primera jugada tiene que sumar un valor de 25 puntos")
-                self.mano.extend(jugada)
-                jugada.clear()  
-                return False
-            else:
-                if self.validar_tercia(jugada) or self.validar_escalera(jugada):
-                    self.jugadas.extend(jugada)
-                    jugada.clear()  
-                    return True
-                else:
-                    print("Jugada invalida, regresando las fichas")
-                    self.mano.extend(jugada)
-                    jugada.clear()  
-                    return False
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            return True
+                        else:
+                            self.mano.extend(jugada)
+                            return False
         else:
-            if self.validar_tercia(jugada) or self.validar_escalera(jugada):
-                self.jugadas.extend(jugada)
-                jugada.clear()  
-                return True
-            else:
-                print("Jugada invalida, regresando las fichas")
-                self.mano.extend(jugada)
-                jugada.clear()  
-                return False
-
+            for jugada in jugadas:
+                    if self.validar_tercia(jugada):
+                        self.jugadas.append(jugada)
+                        pass
+                    else:
+                        if self.validar_escalera(jugada):
+                            self.jugadas.append(jugada)
+                            pass
+                        else:
+                            self.mano.extend(jugada)
+                            pass
+        if len(self.jugadas) == cont_jugadas:
+            return False
+        else:
+            return True
 
     def validar_tercia(self, jugada):
+        print('validando tercia')
         for i in range(len(jugada)-1):
             ficha = jugada[i]
-            if ficha.numero != jugada[i+1].numero or ficha.color == jugada[i+1].color:
-                return False
-            else:
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                pass
+            if ficha.numero == jugada[0].numero and ficha.color != jugada[i-1].color:
                 continue
+            else:
+                return False
         return True
         
     def validar_escalera(self, jugada):
-        for i in range(len(jugada)-1):
-            ficha = jugada[i]
-            if ficha.numero == jugada[i+1].numero or ficha.color != jugada[i+1].color:
-                return False
-            else:
+        comodin = False
+        print('validando escalera')
+        for i, ficha in enumerate(jugada):            
+            if i == 0:
                 continue
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                comodin = True
+                pass
+            if abs(ficha.numero - jugada[i-1].numero) > 1 and not comodin:
+                return False
+            
+            if abs(ficha.numero - jugada[i-1].numero) == 1 and ficha.color == jugada[0].color:
+                continue
+            else:
+                return False
         return True
 
 def crear_fichas():
