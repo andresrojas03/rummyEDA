@@ -854,18 +854,6 @@ class bot():
 
         self.mostrar_mano()
         return 
-        """print('\nmano actualizada')
-        for ficha in mano_bot:
-            print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
-        
-        for jugada in jugadas:
-            ordenar_mano_bot(jugada)
-        
-        print('\njugadas actualizadas:')
-        for jugada in jugadas:
-            for ficha in jugada:
-                print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
-            print() """
 
     def detectar_tercia(self, jugada):
         for i, ficha in enumerate(jugada):
@@ -1150,7 +1138,7 @@ for jugador in table.jugadores:
 
 
 while len(table.jugadores) > 1:
-    #os.system('cls' if os.name == 'nt' else 'clear') 
+    os.system('cls' if os.name == 'nt' else 'clear') 
     rondas += 1
     print(f"####----> RONDA {rondas} <----#####")
     if rondas == 1:
