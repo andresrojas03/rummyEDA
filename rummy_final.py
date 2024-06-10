@@ -24,6 +24,7 @@ class mesa():
     def __init__(self):
         self.jugadores = []
         self.turno_actual = 0
+        self.rondas = 0
         self.modo = False
 
     def modalidad(self, modalidad):
@@ -44,8 +45,8 @@ class mesa():
                 self.jugadores.append(bot(f'bot{i+1}')) 
     
     def mostrar_jugadores(self):
-        for jugador in self.jugadores:
-            print('[' + f'{self.jugadores[self.turno_actual].nombre}' + ']', end='')
+        for i,jugador in enumerate(self.jugadores):
+            print('[' + f'{self.jugadores[i].nombre}' + ']', end='')
         print()
 
     def mezclar_fichas(self):
@@ -116,11 +117,17 @@ class mesa():
     def turno (self, orden):
         self.jugadores = self.jugadores[orden-1:] + self.jugadores[:orden-1]
         self.turno_actual = 0
+        print(f"####----> RONDA {table.rondas + 1} <----#####")
         print(f'Inicia {self.jugadores[self.turno_actual].nombre}')
         return self.jugadores[self.turno_actual]
 
     def sig_turno(self):
         self.turno_actual = (self.turno_actual + 1) % len(self.jugadores)
+        if self.turno_actual == 0:
+            self.rondas += 1
+            print(f"####----> RONDA {self.rondas + 1} <----#####")
+            self.mostrar_manos()
+            self.mostrar_jugadas()
         print(f"Turno de {self.jugadores[self.turno_actual].nombre}")
         return self.jugadores[self.turno_actual]
     
@@ -228,6 +235,7 @@ class player:
         comer = pozo.pop()
 
         print(f"Tomaste la ficha {comer.numero} de color {comer.color}")
+        print(f'Quedan {len(pozo)} fichas en el pozo')
         self.mano.append(comer)
         
         return 
@@ -338,6 +346,8 @@ class player:
                     print("Para terminar el turno debes de haber realizado una jugada antes")
 
     def agregar_a_jugada(self, jugadores):
+        for jugador in jugadores:
+            self.mostrar_jugadas(jugador.jugadas)
         while True:
             for i, jugador in enumerate(jugadores):
                 print(f'{i+1}: {jugador.nombre}')
@@ -386,7 +396,7 @@ class player:
                 if self.validar_agregar_ficha(jugadores[jugador_sel - 1].jugadas[jugada_sel - 1]):
                     return True
                 else:
-                    jugadores[jugador_sel - 1].jugadas[jugada_sel - 1].pop()
+                    jugadores[jugador_sel - 1].jugadas[jugada_sel - 1].remove(ficha)
                     self.mano.append(ficha)
                     print("La ficha no es válida en esta jugada, se ha devuelto a la mano")
                     break
@@ -446,31 +456,31 @@ class player:
                 for jugada in jugadas:
                     if self.validar_tercia(jugada):
                         self.jugadas.append(jugada)
-                        pass
+                        continue
                     else:
                         if self.validar_escalera(jugada):
                             self.jugadas.append(jugada)
-                            pass
+                            continue
                         else:
                             self.mano.extend(jugada)
-                            pass
+                            continue
             elif suma_jugadas > 16 and cont_comodines == 1:
                 for jugada in jugadas:
                     if self.validar_tercia(jugada):
                         self.jugadas.append(jugada)
-                        pass
+                        continue
                     else:
                         if self.validar_escalera(jugada):
                             self.jugadas.append(jugada)
-                            pass
+                            continue
                         else:
                             self.mano.extend(jugada)
-                            return False
+                            continue
             elif suma_jugadas > 9 and cont_comodines == 2:
                 for jugada in jugadas:
                     if self.validar_tercia(jugada):
                         self.jugadas.append(jugada)
-                        return True
+                        continue
                     else:
                         if self.validar_escalera(jugada):
                             self.jugadas.append(jugada)
@@ -482,14 +492,14 @@ class player:
             for jugada in jugadas:
                     if self.validar_tercia(jugada):
                         self.jugadas.append(jugada)
-                        pass
+                        continue
                     else:
                         if self.validar_escalera(jugada):
                             self.jugadas.append(jugada)
-                            pass
+                            continue
                         else:
                             self.mano.extend(jugada)
-                            pass
+                            continue
         if len(self.jugadas) == cont_jugadas:
             return False
         else:
@@ -497,14 +507,17 @@ class player:
 
     def validar_tercia(self, jugada):
         print('validando tercia')
-        for i in range(len(jugada)-1):
-            ficha = jugada[i]
-            if ficha.numero == 0 or ficha.color == 'comodin':
-                pass
-            if ficha.numero == jugada[0].numero and ficha.color != jugada[i-1].color:
+        visto = set()
+        for i, ficha in enumerate(jugada):
+            if i == 0:
                 continue
-            else:
+            if ficha.numero == 0 or ficha.color == 'comodin':
+                continue
+            if ficha.numero != jugada[0].numero or ficha.color in visto:
                 return False
+            else:
+                visto.add(ficha.color)
+                continue
         return True
         
     def validar_escalera(self, jugada):
@@ -666,12 +679,14 @@ class bot():
         if len(pozo) == 0:
             return
         ficha = pozo.pop()
-        print(f"El {self.nombre} ha comido la ficha {ficha.numero} {ficha.color}")
+        print(f"El {self.nombre} ha comido una ficha")
+        print(f'Quedan {len(pozo)} fichas en el pozo')
         self.mano.append(ficha) 
     
     def planear_jugadas(self, rondas, pozo, jugadores):
         self.ordenar_mano_bot()
         cont_jugadas = 0
+
         if self.jugada_libre(rondas):
             return True
         
@@ -781,9 +796,10 @@ class bot():
     
     def jugada_libre(self, rondas):
         if rondas > 10 and not self.jugadas:
+            print(f'{self.nombre} ha abandonado el juego')
             return True
         else:
-            return True
+            return False
 
     def agregar_a_jugadas(self, jugadores, rondas):
         if rondas ==1 or not self.jugadas:
@@ -829,16 +845,19 @@ class bot():
             primera_ficha = jugada[0]
             ultima_ficha = jugada[-1]
             numeros = set()
+            colores = set()
             for ficha in jugada:
                 numeros.add(ficha.numero)
+                colores.add(ficha.color)
             for ficha in self.mano: 
-                if (abs(ficha.numero - primera_ficha.numero) == 1 or abs(ficha.numero - ultima_ficha.numero) == 1) and ficha.color == primera_ficha.color:
-                    if ficha.numero not in numeros:
-                        print(f'{self.nombre} agrego {ficha.numero} color: {ficha.color} a una jugada escalera')
-                        jugada.append(ficha)
-                        print('Jugada con la ficha agregada:')
-                        for ficha in jugada:
-                            print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
+                if (abs(ficha.numero - primera_ficha.numero) == 1 or abs(ficha.numero - ultima_ficha.numero) == 1) and ficha.color in colores:
+                    if ficha.numero in numeros:
+                        break
+                    print(f'{self.nombre} agrego {ficha.numero} color: {ficha.color} a una jugada escalera')
+                    jugada.append(ficha)
+                    print('Jugada con la ficha agregada:')
+                    for ficha in jugada:
+                        print('[' + f'{ficha.numero} color: {ficha.color}' + ']', end='')
                         break
                     else:
                         continue
@@ -1134,37 +1153,31 @@ for jugador in table.jugadores:
     if len(jugador.mano) == 0:
         print("Hubo un error, el jugador no tiene fichas")
         exit(1)
-
-
-
+jugador_actual = table.turno(orden)
+table.mostrar_jugadores()
 while len(table.jugadores) > 1:
-    os.system('cls' if os.name == 'nt' else 'clear') 
-    rondas += 1
-    print(f"####----> RONDA {rondas} <----#####")
-    if rondas == 1:
-        table.turno(orden)
-    table.mostrar_manos()
-    table.mostrar_jugadas()
-    if len(table.jugadores) == 1:
+    if jugador_actual.ganar():
+        table.eliminar_jugador(table.turno_actual)
+
+    if len(table.jugadores) == 0:
+        print('El juego ha terminado')
         break
     if len(pozo) == 0:
-        print('El pozo se quedo sin fichas')
+        print('El juego ha terminado, no hay mas fichas en el pozo')
         break
-    for j in range(len(table.jugadores)):
-        if table.jugadores[table.turno_actual].ganar():
+    if isinstance(jugador_actual, player):
+        jugador_actual.armar_jugada(pozo, table.jugadores)
+        print()
+        jugador_actual = table.sig_turno()
+        time.sleep(1)
+    else:
+        if jugador_actual.planear_jugadas(table.rondas, pozo, table.jugadores):
             table.eliminar_jugador(table.turno_actual)
+        print()
+        jugador_actual = table.sig_turno()
+        time.sleep(1)
 
-        if isinstance(table.jugadores[table.turno_actual], player):
-            table.jugadores[table.turno_actual].armar_jugada(pozo, table.jugadores)
-            print()
-            table.sig_turno()
-            time.sleep(1)
-        else:
-            if table.jugadores[table.turno_actual].planear_jugadas(rondas, pozo, table.jugadores):
-                table.eliminar_jugador(table.turno_actual)
-            print()
-            table.sig_turno()
-            time.sleep(1)
+
     
     
 
